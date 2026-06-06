@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <script>
+    (function() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+    })();
+ </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Управление пользователями - IP/IOC Manager</title>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Общие стили -->
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Стили страницы пользователей -->
+  <link rel="stylesheet" href="css/auth/users.css">
+</head>
+
+<body>
+  <div class="container">
+    <!-- Шапка -->
+    <div class="header">
+      <div class="logo">
+        <i class="fas fa-shield-halved"></i> IP/IOC Manager
+      </div>
+      <div class="user-section">
+        <div class="user-info" id="userInfo" onclick="window.location.href='/profile.html'" style="cursor: pointer;">
+          <div class="user-avatar">
+            <i class="fas fa-user"></i>
+          </div>
+          <span id="userName">Загрузка...</span>
+        </div>
+        <div class="theme-toggle" onclick="toggleTheme()">
+          <i class="fas fa-moon"></i>
+          <span>Тема</span>
+        </div>
+        <button class="btn btn-secondary" onclick="logout()" style="padding: 8px 15px;">
+          <i class="fas fa-sign-out-alt"></i> Выход
+        </button>
+      </div>
+    </div>
+
+    <!-- Навигация -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <div class="main-nav" style="margin-bottom: 0;">
+        <div class="nav-item" onclick="window.location.href='/'">
+          <i class="fas fa-network-wired"></i> IP Источники
+        </div>
+        <div class="nav-item" onclick="window.location.href='/'">
+          <i class="fas fa-check-circle"></i> IP Белые
+        </div>
+        <div class="nav-item" onclick="window.location.href='/'">
+          <i class="fas fa-shield"></i> IOC Хеши
+        </div>
+      </div>
+      <div class="main-nav" style="margin-bottom: 0; background-color: var(--bg-tertiary);">
+        <div class="nav-item active" onclick="window.location.href='/users.html'">
+          <i class="fas fa-users-cog"></i> Управление пользователями
+        </div>
+      </div>   
+    </div>
+
+    <!-- Контент -->
+    <div class="users-container">
+      <div class="users-header">
+        <h2>Управление пользователями</h2>
+        <button class="btn btn-primary" onclick="openUserModal()">
+          <i class="fas fa-user-plus"></i> Новый пользователь
+        </button>
+      </div>
+
+      <!-- Таблица пользователей -->
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Имя пользователя</th>
+            <th>Полное имя</th>
+            <th>Должность</th>
+            <th>Отдел</th>
+            <th>Email</th>
+            <th>Роль</th>
+            <th>Статус</th>
+            <th>Последний вход</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody">
+          <tr><td colspan="10" style="text-align: center;">Загрузка...</td></tr>
+          <tr>
+            <td>
+              <button class="btn btn-secondary" style="padding: 4px 8px;" onclick="editUser(${user.id})" title="Редактировать">
+                <i class="fas fa-edit"></i>
+              </button>
+              ${user.id !== JSON.parse(localStorage.getItem('user')).id ? `
+              <button class="btn btn-secondary" style="padding: 4px 8px;" onclick="toggleUserStatus(${user.id}, ${user.is_active})" title="${user.is_active ? 'Заблокировать' : 'Разблокировать'}">
+                <i class="fas fa-${user.is_active ? 'ban' : 'check'}"></i>
+              </button>
+              <button class="btn btn-secondary" style="padding: 4px 8px; background-color: #dc3545; color: white;" onclick="deleteUser(${user.id}, '${user.username}')" title="Удалить навсегда">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+              ` : ''}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Модальное окно для создания/редактирования пользователя -->
+  <div id="userModal" class="user-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Новый пользователь</h3>
+        <span class="modal-close" onclick="closeUserModal()">&times;</span>
+      </div>
+
+      <form id="userForm">
+        <input type="hidden" id="userId">
+
+        <div class="form-group">
+          <label for="username">Имя пользователя *</label>
+          <input type="text" id="username" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Пароль *</label>
+          <input type="password" id="password" required minlength="12">
+          <small style="color: var(--text-secondary);">Минимум 12 символов</small>
+        </div>
+
+        <div class="form-group">
+          <label for="fullName">Полное имя</label>
+          <input type="text" id="fullName">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+                <label for="position">Должность</label>
+                <input type="text" id="position" maxlength="100" placeholder="Например: Руководитель отдела">
+        </div>
+
+        <div class="form-group" style="flex: 1;">
+                <label for="department">Отдел</label>
+                <input type="text" id="department" maxlength="100" placeholder="Например: IT-безопасность">
+            </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email">
+        </div>
+
+        <div class="form-group">
+          <label for="role">Роль</label>
+          <select id="role">
+            <option value="user">Пользователь</option>
+            <option value="admin">Администратор</option>
+          </select>
+        </div>
+
+        <h4>Права доступа</h4>
+        <div class="permissions-grid">
+          <div class="form-check">
+            <input type="checkbox" id="canCreate" checked>
+            <label for="canCreate">Создание записей</label>
+          </div>
+
+          <div class="form-check">
+            <input type="checkbox" id="canEdit" checked>
+            <label for="canEdit">Редактирование</label>
+          </div>
+
+          <div class="form-check">
+            <input type="checkbox" id="canDelete">
+            <label for="canDelete">Удаление</label>
+          </div>
+
+          <div class="form-check">
+            <input type="checkbox" id="canImport">
+            <label for="canImport">Импорт</label>
+          </div>
+
+          <div class="form-check">
+            <input type="checkbox" id="canExport" checked>
+            <label for="canExport">Экспорт</label>
+          </div>
+
+          <div class="form-check">
+            <input type="checkbox" id="canManageUsers">
+            <label for="canManageUsers">Управление пользователями</label>
+          </div>
+        </div>
+
+        <div class="form-check" style="margin: 15px 0;">
+          <input type="checkbox" id="isActive" checked>
+          <label for="isActive">Активен</label>
+        </div>
+
+        <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Отмена</button>
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Конфигурация -->
+  <script type="module" src="js/config.js"></script>
+  <!-- Общие функции -->
+  <script type="module" src="js/app.js"></script>
+  <!-- Скрипт страницы пользователей -->
+  <script type="module" src="js/auth/users.js"></script>
+</body>
+
+</html>

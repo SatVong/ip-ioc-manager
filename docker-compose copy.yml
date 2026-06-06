@@ -1,0 +1,59 @@
+#version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: ipioc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ipioc_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: ipioc_backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ipioc_network
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build: ./frontend
+    container_name: ipioc_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - ipioc_network
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:
+    name: ipioc_postgres_data
+
+networks:
+  ipioc_network:
+    name: ipioc_network
+    driver: bridge

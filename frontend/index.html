@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <script>
+        // Мгновенное применение темы до загрузки страницы
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+        })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IP & IOC Management System</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Наши стили -->
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+    <div class="container">
+        <!-- Шапка с пользователем -->
+        <div class="header">
+            <div class="logo"><i class="fas fa-shield-halved"></i> IP/IOC Manager</div>
+            <div class="user-section">
+                <div class="user-info" id="userInfo" onclick="window.location.href='/profile.html'" style="cursor: pointer">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span id="userName">Загрузка...</span>
+                </div>
+                <div class="theme-toggle" onclick="toggleTheme()">
+                    <i class="fas fa-moon"></i>
+                    <span>Тема</span>
+                </div>
+                <button class="btn btn-secondary" onclick="logout()" style="padding: 8px 15px">
+                    <i class="fas fa-sign-out-alt"></i> Выход
+                </button>
+            </div>
+        </div>
+
+        <!-- Навигация между страницами -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px">
+            <div class="main-nav" style="margin-bottom: 0">
+                <div class="nav-item active" onclick="switchPage('ip')">
+                    <i class="fas fa-network-wired"></i> IP Источники
+                </div>
+                <div class="nav-item" onclick="switchPage('white-ip')">
+                    <i class="fas fa-check-circle"></i> IP Белые
+                </div>
+                <div class="nav-item" onclick="window.location.href='/ioc.html'">
+                    <i class="fas fa-shield"></i> IOC Хеши
+                </div>
+            </div>
+        
+            <!-- Административный блок справа -->
+            <div class="main-nav" style="margin-bottom: 0; background-color: var(--bg-tertiary)">
+                <div class="nav-item" onclick="window.location.href='/users.html'">
+                    <i class="fas fa-users-cog"></i> Управление пользователями
+                </div>
+            </div>
+        </div>
+
+        <!-- Страница IP (источники) -->
+        <div id="ip-page" class="ip-page active">
+            <!-- Верхняя панель с действиями -->
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="openAddModal()" id="addBtn">
+                    <i class="fas fa-plus"></i> Добавить запись
+                </button>
+                <button class="btn btn-secondary" onclick="exportData()" id="exportBtn">
+                    <i class="fas fa-download"></i> Экспорт
+                </button>
+                <button class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click()" id="importBtn">
+                    <i class="fas fa-upload"></i> Импорт
+                </button>
+                <input type="file" id="csvFileInput" accept=".csv" style="display: none" onchange="importData(this.files[0])" />
+            </div>
+
+            <!-- Глобальный поиск -->
+            <div class="global-search">
+                <input type="text" id="globalSearch" placeholder="🔍 Быстрый поиск по всем полям..." oninput="globalSearch()" />
+            </div>
+
+            <!-- Статистика -->
+            <div class="stats-bar">
+                <span><i class="fas fa-database"></i> Всего записей: <strong id="totalRecords">0</strong></span>
+                <span><i class="fas fa-filter"></i> Активных фильтров: <strong id="activeFilters">0</strong></span>
+            </div>
+
+            <!-- Раздел IP (источники) -->
+            <div class="ip-section">
+                <div class="section-title"><i class="fas fa-network-wired"></i> IP (источники)</div>
+                
+                <div class="org-wrapper">
+                    <!-- Минфин -->
+                    <div class="org-section">
+                        <div class="org-title">Минфин</div>
+                        <div class="tabs" id="ipTabsOrg1">
+                            <button class="tab-btn active" onclick="filterBySource('all')">Сводный</button>
+                            <button class="tab-btn" onclick="filterBySource('1-PT AF')">1-PT AF</button>
+                            <button class="tab-btn" onclick="filterBySource('2-NGENIX')">2-NGENIX</button>
+                            <button class="tab-btn" onclick="filterBySource('3-PT AF (DN)')">3-PT AF (DN)</button>
+                            <button class="tab-btn" onclick="filterBySource('4-PT AF (GR)')">4-PT AF (GR)</button>
+                            <button class="tab-btn" onclick="filterBySource('5-Mitigator (DN)')">5-Mitigator (DN)</button>
+                            <button class="tab-btn" onclick="filterBySource('6-Mitigator (GR)')">6-Mitigator (GR)</button>
+                            <button class="tab-btn" onclick="filterBySource('7-Континент')">7-Континент</button>
+                            <button class="tab-btn" onclick="filterBySource('8-UG')">8-UG</button>
+                            <button class="tab-btn" onclick="filterBySource('9-Mitigator (IL)')">9-Mitigator (IL)</button>
+                            <button class="tab-btn" onclick="filterBySource('10-SIEM')">10-SIEM</button>
+                            <button class="tab-btn" onclick="filterBySource('11-KATA')">11-KATA</button>
+                        </div>
+                    </div>
+
+                    <!-- МТГ -->
+                    <div class="org-section">
+                        <div class="org-title">МТГ</div>
+                        <div class="tabs" id="ipTabsOrg2">
+                            <button class="tab-btn" onclick="filterBySource('12-SIEM')">12-SIEM</button>
+                            <button class="tab-btn" onclick="filterBySource('13-KATA')">13-KATA</button>
+                            <button class="tab-btn" onclick="filterBySource('14-UG')">14-UG</button>
+                            <button class="tab-btn" onclick="filterBySource('15-Mitigator')">15-Mitigator</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Фильтры по колонкам -->
+            <div class="filter-row" id="columnFilters"></div>
+
+            <!-- Таблица данных -->
+            <div class="table-wrapper">
+                <table id="dataTable">
+                    <thead id="tableHeader"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Пагинация -->
+            <div class="pagination">
+                <div>
+                    <select id="pageSize" onchange="changePageSize()">
+                        <option value="10">10 записей на странице</option>
+                        <option value="25">25 записей на странице</option>
+                        <option value="50">50 записей на странице</option>
+                        <option value="100">100 записей на странице</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px">
+                    <button class="btn btn-secondary" onclick="prevPage()">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span style="padding: 10px" id="pageInfo">Страница 1 из 1</span>
+                    <button class="btn btn-secondary" onclick="nextPage()">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Модальное окно для добавления записи -->
+<div id="addRecordModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3>Добавление новой записи</h3>
+            <span class="modal-close" onclick="closeAddModal()">&times;</span>
+        </div>
+        
+        <form id="addRecordForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <!-- Левая колонка -->
+                <div>
+                    <div class="form-group">
+                        <label for="addDate">Дата получения *</label>
+                        <input type="text" id="addDate" placeholder="ДД.ММ.ГГГГ (например 25.12.2024)" required 
+                               pattern="\d{2}\.\d{2}\.\d{4}" maxlength="10">
+                        <small class="field-hint">Формат: ДД.ММ.ГГГГ</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="addFrom">Откуда получено *</label>
+                        <input type="text" id="addFrom" maxlength="64" required 
+                               placeholder="Например: ФСТЭК 240/92/2544 и т.д.">
+                        <small class="field-hint">Максимум 64 символа</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="addLetter">Раздел письма</label>
+                        <input type="text" id="addLetter" maxlength="24" 
+                               placeholder="Например: п.4, Приложение к п.5 и т.д.">
+                        <small class="field-hint">Максимум 24 символа</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="addDomain">Домен</label>
+                        <input type="text" id="addDomain" maxlength="64" 
+                               placeholder="Например: example.com">
+                        <small class="field-hint">Максимум 64 символа</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="addIp">IP-адрес</label>
+                        <input type="text" id="addIp" placeholder="xxx.xxx.xxx.xxx (например 192.168.1.1)" 
+                               oninput="validateIpOnInput(this)" maxlength="15">
+                        <small class="field-hint">Формат: xxx.xxx.xxx.xxx (точки ставьте сами)</small>
+                        <div id="ipError" class="field-error" style="display: none;"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="addCountry">Страна (2 буквы)</label>
+                        <input type="text" id="addCountry" maxlength="2" style="text-transform: uppercase;" 
+                               placeholder="RU, US, DE">
+                        <small class="field-hint">Две заглавные буквы (если страна не известна то пиши XX)</small>
+                    </div>
+                </div>
+                
+                <!-- Правая колонка -->
+                <div>
+                    <div class="form-group">
+                        <label for="addOwner">Владелец</label>
+                        <input type="text" id="addOwner" maxlength="64" 
+                               placeholder="Например: Cloudflare, Inc., Proton66 OOO и т.д.">
+                        <small class="field-hint">Максимум 64 символа</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="addNoteIn">Примечание к внесению</label>
+                        <textarea id="addNoteIn" maxlength="128" rows="3" 
+                                  placeholder="Дополнительная информация о записи"></textarea>
+                        <small class="field-hint">Максимум 128 символов</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="addDateIn">Дата внесения *</label>
+                        <input type="text" id="addDateIn" placeholder="ДД.ММ.ГГГГ (например 25.12.2024)" required 
+                               pattern="\d{2}\.\d{2}\.\d{4}" maxlength="10">
+                        <small class="field-hint">Формат: ДД.ММ.ГГГГ, время добавится автоматически</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Кто вносит</label>
+                        <input type="text" id="addWhoIn" readonly disabled 
+                               value="Загрузка..." style="background-color: var(--bg-tertiary);">
+                    </div>
+                </div>
+            </div>
+            
+            <div id="formErrors" class="form-errors" style="display: none; color: #dc3545; margin: 15px 0; padding: 10px; background-color: rgba(220,53,69,0.1); border-radius: 4px;"></div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary">Добавить запись</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Модальное окно для исключения записи -->
+<div id="exceptionModal" class="modal" style="display: none;">
+    <div class="modal-content exception-modal-content">
+        <div class="modal-header">
+            <h3 id="exceptionModalTitle">Исключение записи</h3>
+            <span class="modal-close" onclick="closeExceptionModal()">&times;</span>
+        </div>
+        
+        <div class="exception-note">
+            <i class="fas fa-info-circle"></i>
+            <span>После исключения не забудьте про отметки в столбце "Где внесено" (квадратики 1-8)</span>
+        </div>
+        
+        <form id="exceptionForm">
+            <input type="hidden" id="exceptionRowId">
+            <input type="hidden" id="exceptionRowIndex">
+            
+            <div class="exception-field">
+                <label for="exceptionReason">Причина исключения *</label>
+                <textarea id="exceptionReason" maxlength="128" required 
+                          placeholder="Укажите причину исключения записи"></textarea>
+                <small class="field-hint">Максимум 128 символов</small>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="exception-field">
+                    <label for="exceptionWho">Кто исключает</label>
+                    <input type="text" id="exceptionWho" readonly>
+                </div>
+                
+                <div class="exception-field">
+                    <label for="exceptionDate">Дата исключения</label>
+                    <input type="text" id="exceptionDate" readonly>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeExceptionModal()">Отмена</button>
+                <button type="button" class="btn btn-danger" id="clearExceptionBtn" style="background-color: #dc3545; color: white; display: none;" onclick="confirmClearException()">
+                    <i class="fas fa-undo-alt"></i> Очистить запись
+                </button>
+                <button type="submit" class="btn btn-primary" id="submitExceptionBtn">
+                    <i class="fas fa-check"></i> Подтвердить исключение
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- Подключаем скрипты в правильном порядке (как модули) -->
+<script type="module" src="js/config.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+
+</html>

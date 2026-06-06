@@ -1,0 +1,24 @@
+#version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: ip_ioc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres-ip-manager
+      POSTGRES_PASSWORD: vhtuajmsavdshs213fvsdcv
+      POSTGRES_DB: ipioc_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ipioc_network
+
+volumes:
+  postgres_data:
+
+networks:
+  ipioc_network:
+    driver: bridge
