@@ -1,11 +1,12 @@
 const { Pool } = require('pg');
+require('dotenv').config();
 
 const pool = new Pool({
-    user: 'postgres-ip-manager',
-    host: 'localhost',
-    database: 'ipioc_db',
-    password: 'vhtuajmsavdshs213fvsdcv',
-    port: 5432,
+    user: process.env.DB_USER || 'postgres-ip-manager',
+    host: process.env.DB_HOST || 'localhost',
+    database: process.env.DB_NAME || 'ipioc_db',
+    password: process.env.DB_PASSWORD || 'vhtuajmsavdshs213fvsdcv',
+    port: process.env.DB_PORT || 5432,
     connectionTimeoutMillis: 5000,
 });
 

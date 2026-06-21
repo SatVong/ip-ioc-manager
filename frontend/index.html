@@ -14,7 +14,6 @@
             }
         })();
     </script>
-    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IP & IOC Management System</title>
     <!-- Font Awesome -->
@@ -51,7 +50,7 @@
                 <div class="nav-item active" onclick="switchPage('ip')">
                     <i class="fas fa-network-wired"></i> IP Источники
                 </div>
-                <div class="nav-item" onclick="switchPage('white-ip')">
+                <div class="nav-item" onclick="window.location.href='/white-ip.html'">
                     <i class="fas fa-check-circle"></i> IP Белые
                 </div>
                 <div class="nav-item" onclick="window.location.href='/ioc.html'">
@@ -99,9 +98,9 @@
                 <div class="section-title"><i class="fas fa-network-wired"></i> IP (источники)</div>
                 
                 <div class="org-wrapper">
-                    <!-- Организация №1 -->
+                    <!-- Организация 1 -->
                     <div class="org-section">
-                        <div class="org-title">Организация №1</div>
+                        <div class="org-title">Организация 1</div>
                         <div class="tabs" id="ipTabsOrg1">
                             <button class="tab-btn active" onclick="filterBySource('all')">Сводный</button>
                             <button class="tab-btn" onclick="filterBySource('1-PT AF')">1-PT AF</button>
@@ -118,9 +117,9 @@
                         </div>
                     </div>
 
-                    <!-- Организация №2 -->
+                    <!-- Организация 2 -->
                     <div class="org-section">
-                        <div class="org-title">Организация №2</div>
+                        <div class="org-title">Организация 2</div>
                         <div class="tabs" id="ipTabsOrg2">
                             <button class="tab-btn" onclick="filterBySource('12-SIEM')">12-SIEM</button>
                             <button class="tab-btn" onclick="filterBySource('13-KATA')">13-KATA</button>
@@ -310,7 +309,6 @@
         </form>
     </div>
 </div>
-
 
 <!-- Подключаем скрипты в правильном порядке (как модули) -->
 <script type="module" src="js/config.js"></script>
