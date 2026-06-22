@@ -1,8 +1,7 @@
 {
     "folders": [
         {
-            "name": "SSH FS - ip-ioc-redos",
-            "uri": "ssh://ip-ioc-redos/home/omsib/ip-ioc-manager"
+            "path": "."
         }
     ]
 }
