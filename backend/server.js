@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 // const pool = require('./db'); заменил строкой ниже
 const { pool, ensureAdminExists } = require('./db');
+const swaggerUi = require('swagger-ui-express'); // swagger
+const swaggerSpec = require('./swagger');        // swagger
 const path = require('path');
 const authRoutes = require('./auth');
 require('dotenv').config();
@@ -17,6 +19,12 @@ app.set('trust proxy', true);
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Swagger документация (без авторизации)
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'IP/IOC Manager API Docs'
+}));
 
 // Отдаём статические файлы из папки frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
@@ -288,6 +296,191 @@ app.delete('/api/records/:id', async (req, res) => {
 // Тестовый endpoint
 app.get('/api/test', (req, res) => {
     res.json({ message: 'Сервер работает!', time: new Date() });
+});
+
+
+// ==================== API ДЛЯ WHITE IP RECORDS С ПАГИНАЦИЕЙ ====================
+
+// Получить White IP записи с пагинацией, сортировкой и фильтрацией
+app.get('/api/white-ip-records/paginated', authenticateToken, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+        const sortBy = req.query.sortBy || 'id';
+        const sortOrder = req.query.sortOrder === 'asc' ? 'ASC' : 'DESC';
+        
+        let filters = {};
+        if (req.query.filters) {
+            try {
+                filters = JSON.parse(req.query.filters);
+            } catch (e) {}
+        }
+        
+        const globalSearch = req.query.globalSearch || '';
+        
+        const columnMap = {
+            'id': 'id',
+            'Где внесено': 'mses',
+            'Дата получения': 'date',
+            'Откуда получено': 'from_source',
+            'Раздел письма': 'letter',
+            'IP-адресс': 'ip',
+            'Как внесено на МСЭ': 'mse_method',
+            'Примечание к внесению': 'note_in',
+            'Заявки': 'soib_infr',
+            'Дата внесения': 'date_in',
+            'Кто вносил': 'who_in',
+            'Примечание к исключению': 'note_out',
+            'Дата исключения': 'date_out',
+            'Кто исключил': 'who_out'
+        };
+        
+        const dbSortBy = columnMap[sortBy] || 'id';
+        
+        const whereClauses = [];
+        const queryParams = [];
+        let paramIndex = 1;
+        
+        for (const [column, value] of Object.entries(filters)) {
+            if (value && value !== '') {
+                const dbColumn = columnMap[column];
+                if (dbColumn) {
+                    if (dbColumn === 'mses') {
+                        const numbers = value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+                        if (numbers.length > 0) {
+                            whereClauses.push(`${dbColumn} && $${paramIndex}::int[]`);
+                            queryParams.push(numbers);
+                            paramIndex++;
+                        }
+                    } else {
+                        whereClauses.push(`${dbColumn} ILIKE $${paramIndex}`);
+                        queryParams.push(`%${value}%`);
+                        paramIndex++;
+                    }
+                }
+            }
+        }
+        
+        if (globalSearch && globalSearch !== '') {
+            const searchColumns = ['ip', 'from_source', 'soib_infr', 'note_in'];
+            const searchConditions = searchColumns.map(col => `${col} ILIKE $${paramIndex}`);
+            whereClauses.push(`(${searchConditions.join(' OR ')})`);
+            queryParams.push(`%${globalSearch}%`);
+            paramIndex++;
+        }
+        
+        let whereStr = '';
+        if (whereClauses.length > 0) {
+            whereStr = ' WHERE ' + whereClauses.join(' AND ');
+        }
+        
+        const query = `
+            SELECT * FROM white_ip_records
+            ${whereStr}
+            ORDER BY ${dbSortBy} ${sortOrder}
+            LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+        `;
+        
+        const countQuery = `
+            SELECT COUNT(*) FROM white_ip_records
+            ${whereStr}
+        `;
+        
+        const queryParamsWithLimit = [...queryParams, limit, offset];
+        
+        const result = await pool.query(query, queryParamsWithLimit);
+        const countResult = await pool.query(countQuery, queryParams);
+        
+        res.json({
+            data: result.rows,
+            total: parseInt(countResult.rows[0].count),
+            page: page,
+            limit: limit,
+            totalPages: Math.ceil(parseInt(countResult.rows[0].count) / limit)
+        });
+        
+    } catch (err) {
+        console.error('❌ Ошибка в white IP paginated API:', err.message);
+        res.status(500).json({ error: 'Ошибка при получении записей' });
+    }
+});
+
+// Создать новую White IP запись
+app.post('/api/white-ip-records', authenticateToken, async (req, res) => {
+    try {
+        const { 
+            mses, date, from_source, letter, ip, 
+            mse_method, note_in, soib_infr, date_in, who_in,
+            note_out, date_out, who_out 
+        } = req.body;
+
+        const result = await pool.query(
+            `INSERT INTO white_ip_records 
+            (mses, date, from_source, letter, ip, 
+             mse_method, note_in, soib_infr, date_in, who_in, note_out, date_out, who_out) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+            RETURNING *`,
+            [mses, date, from_source, letter, ip, 
+             mse_method, note_in, soib_infr || '-', date_in, who_in, note_out, date_out, who_out]
+        );
+
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error('❌ Ошибка при создании White IP записи:', err.message);
+        res.status(500).json({ error: 'Ошибка при создании записи' });
+    }
+});
+
+// Обновить White IP запись
+app.put('/api/white-ip-records/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { 
+            mses, date, from_source, letter, ip, 
+            mse_method, note_in, soib_infr, date_in, who_in,
+            note_out, date_out, who_out 
+        } = req.body;
+
+        const result = await pool.query(
+            `UPDATE white_ip_records 
+            SET mses = $1, date = $2, from_source = $3, letter = $4, ip = $5,
+                mse_method = $6, note_in = $7, soib_infr = $8, date_in = $9,
+                who_in = $10, note_out = $11, date_out = $12, who_out = $13,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $14 
+            RETURNING *`,
+            [mses, date, from_source, letter, ip, 
+             mse_method, note_in, soib_infr, date_in, who_in,
+             note_out, date_out, who_out, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Запись не найдена' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('❌ Ошибка при обновлении White IP записи:', err.message);
+        res.status(500).json({ error: 'Ошибка при обновлении записи' });
+    }
+});
+
+// Удалить White IP запись
+app.delete('/api/white-ip-records/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query('DELETE FROM white_ip_records WHERE id = $1 RETURNING *', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Запись не найдена' });
+        }
+
+        res.json({ message: 'Запись удалена', deleted: result.rows[0] });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Ошибка при удалении записи' });
+    }
 });
 
 // ==================== АДМИНСКИЕ ОПЕРАЦИИ ====================
