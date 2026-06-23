@@ -1,6 +1,6 @@
 // ui/ipImportExport.js
 // Импорт/Экспорт CSV для IP страницы
-
+import { CONFIG } from '../config.js';
 import { TABLE_COLUMNS } from '../constants/index.js';
 import { hasPermission } from '../api/client.js';
 import { setCurrentPage, setPageSize } from '../serverPagination.js';
