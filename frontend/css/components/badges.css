@@ -1,0 +1,50 @@
+/* ========== БЕЙДЖИ (СТАТУСЫ, РОЛИ) ========== */
+.badge-active {
+    background-color: var(--success-color);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.badge-inactive {
+    background-color: var(--danger-color);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.badge-admin {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.badge-user {
+    background-color: #6c757d;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+/* Бейджи прав доступа */
+.permission-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.permission-badge.allowed {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.permission-badge.denied {
+    background-color: var(--danger-color);
+    color: white;
+}

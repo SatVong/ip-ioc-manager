@@ -1,0 +1,101 @@
+/* ========== ШАПКА ========== */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    background-color: var(--bg-secondary);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.user-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 15px;
+    background-color: var(--bg-tertiary);
+    border-radius: 20px;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.theme-toggle {
+    cursor: pointer;
+    padding: 8px 12px;
+    background-color: var(--bg-tertiary);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* ========== НАВИГАЦИЯ ========== */
+.main-nav {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 20px;
+    background-color: var(--bg-secondary);
+    padding: 5px;
+    border-radius: 8px;
+}
+
+.nav-item {
+    padding: 10px 30px;
+    cursor: pointer;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.3s;
+}
+
+.nav-item.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.nav-item:hover:not(.active) {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.main-nav:last-child {
+    margin-left: auto;
+}
+
+.main-nav:last-child .nav-item {
+    background-color: var(--bg-tertiary);
+}
+
+.main-nav:last-child .nav-item:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Административная кнопка */
+.main-nav:last-child .nav-item {
+    color: var(--text-primary);
+}

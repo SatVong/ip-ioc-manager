@@ -1,0 +1,35 @@
+/* ========== CSS ПЕРЕМЕННЫЕ (ТЕМЫ) ========== */
+
+/* Светлая тема */
+:root {
+    --bg-primary: #f5f5f5;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e8e8e8;
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --border-color: #dddddd;
+    --hover-color: #01524020;
+    --input-bg: #ffffff;
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --primary-color: #015240;
+    --primary-hover: #016b54;
+    --danger-color: #dc3545;
+    --danger-hover: #c82333;
+    --success-color: #28a745;
+    --warning-bg: #fff3cd;
+    --warning-border: #ffeeba;
+    --warning-text: #856404;
+}
+
+/* Тёмная тема */
+[data-theme="dark"] {
+    --bg-primary: #1e1e1e;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --border-color: #4d4d4d;
+    --hover-color: #8d8a8a;
+    --input-bg: #3d3d3d;
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}

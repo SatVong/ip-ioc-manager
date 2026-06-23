@@ -1,0 +1,65 @@
+/* ========== ВКЛАДКИ ========== */
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 20px;
+    background-color: var(--bg-secondary);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.tab-btn {
+    padding: 8px 16px;
+    background-color: var(--bg-tertiary);
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.tab-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.tab-btn:hover:not(.active) {
+    background-color: var(--primary-hover);
+    color: white;
+}
+
+.section-title {
+    color: var(--primary-color);
+    font-size: 18px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+/* Вкладки с организациями */
+.org-wrapper {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.org-section {
+    flex: 1;
+    min-width: 300px;
+}
+
+.org-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    padding-left: 12px;
+    border-left: 4px solid var(--primary-color);
+    background: linear-gradient(90deg, var(--bg-tertiary) 0%, transparent 100%);
+    padding: 8px 0 8px 12px;
+    border-radius: 0 8px 8px 0;
+}
