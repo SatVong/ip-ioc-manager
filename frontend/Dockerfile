@@ -1,9 +1,9 @@
 FROM nginx:alpine
 
-# Копируем статические файлы
+# Копируем файлы фронтенда в nginx
 COPY . /usr/share/nginx/html
 
-# Копируем конфигурацию nginx (создадим позже)
+# Копируем конфигурацию nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

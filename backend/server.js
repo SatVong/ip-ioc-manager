@@ -599,15 +599,15 @@ app.use((req, res, next) => {
 
 // Запуск сервера
 app.listen(port, '0.0.0.0', async () => {
-    console.log(`🚀 Сервер запущен на http://192.168.52.145:${port}`);
+    console.log(`🚀 Сервер запущен на порту ${port}`);
     console.log(`📝 API endpoints:`);
     console.log(`   GET    /api/test`);
     console.log(`   GET    /api/records`);
-    console.log(`   GET    /api/records/:id`);
+    console.log(`   GET    /api/records/paginated`);
     console.log(`   POST   /api/records`);
     console.log(`   PUT    /api/records/:id`);
     console.log(`   DELETE /api/records/:id`);
-    console.log(`📁 Фронтенд доступен по адресу: http://192.168.52.145:${port}`);
+    console.log(`   ... (полный список в /api-docs)`);
     
     // Добавляем задержку перед проверкой администратора
     setTimeout(() => {

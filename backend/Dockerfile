@@ -4,17 +4,13 @@ WORKDIR /app
 
 # Копируем package.json и устанавливаем зависимости
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --production
 
-# Копируем исходный код
+# Копируем исходный код бэкенда
 COPY . .
 
-# Создаем пользователя без прав
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-USER nodejs
-
+# Порт, который слушает Express
 EXPOSE 3000
 
+# Запуск сервера
 CMD ["node", "server.js"]
