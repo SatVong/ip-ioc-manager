@@ -905,6 +905,40 @@ const options = {
                 }
             },
 
+            '/api/admin/seed-demo-data': {
+                post: {
+                    tags: ['Администрирование'],
+                    summary: 'Заполнить демо-данными',
+                    description: 'Добавляет по 35 случайных записей в таблицы IP источников, Белых IP и IOC хешей (всего 105 записей)',
+                    responses: {
+                        '200': {
+                            description: 'Демо-данные добавлены',
+                            content: {
+                                'application/json': {
+                                    schema: {
+                                        type: 'object',
+                                        properties: {
+                                            success: { type: 'boolean', example: true },
+                                            message: { type: 'string', example: '✅ Демо-данные добавлены: IP источников — 35, Белых IP — 35, IOC хешей — 35' },
+                                            counts: {
+                                                type: 'object',
+                                                properties: {
+                                                    ip: { type: 'integer', example: 35 },
+                                                    white_ip: { type: 'integer', example: 35 },
+                                                    ioc: { type: 'integer', example: 35 }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        '403': { description: 'Только администратор' },
+                        '500': { description: 'Ошибка сервера' }
+                    }
+                }
+            },
+
             // ==================== АДМИНСКИЕ ОПЕРАЦИИ ====================
             '/api/admin/clear-ip-records': {
                 delete: {

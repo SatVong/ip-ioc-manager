@@ -313,8 +313,48 @@ function showAdminClearSection(isAdmin) {
     }
 }
 
-// В функции renderPermissions добавьте вызов showAdminClearSection
-// Найдите в renderPermissions блок с админом и добавьте вызов
+// ==================== ЗАПОЛНЕНИЕ ДЕМО-ДАННЫМИ ====================
+
+async function seedDemoData() {
+    if (!confirm('🌱 Заполнить все три таблицы демо-данными?\n\n' +
+                 'Будет добавлено:\n' +
+                 '• 35 записей в IP источники\n' +
+                 '• 35 записей в Белые IP\n' +
+                 '• 35 записей в IOC Хеши\n\n' +
+                 'Всего 105 записей.')) {
+        return;
+    }
+    
+    try {
+        const btn = document.getElementById('seedDemoBtn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Заполнение...';
+        
+        const response = await authFetch(`${CONFIG.API_URL}/admin/seed-demo-data`, {
+            method: 'POST'
+        });
+        
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        
+        if (!response) return;
+        
+        if (response.ok) {
+            const result = await response.json();
+            alert(`✅ ${result.message}`);
+        } else {
+            const error = await response.json();
+            alert(`❌ Ошибка: ${error.error || 'Не удалось заполнить демо-данными'}`);
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('❌ Ошибка при заполнении демо-данными');
+        const btn = document.getElementById('seedDemoBtn');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-seedling"></i> Заполнить демо-данными';
+    }
+}
 
 // Инициализация
 window.onload = async () => {
@@ -336,6 +376,10 @@ window.onload = async () => {
     if (clearUsersBtn) {
         clearUsersBtn.onclick = () => clearUsers();
     }
+    const seedDemoBtn = document.getElementById('seedDemoBtn');
+    if (seedDemoBtn) {
+        seedDemoBtn.onclick = () => seedDemoData();
+}
 };
 
 // Экспорт в глобальную область
