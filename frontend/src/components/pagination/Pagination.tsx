@@ -63,6 +63,7 @@ export default function Pagination({ page, limit, total, totalPages, onPageChang
             color: 'var(--color-text)',
             border: '1px solid var(--color-border)',
           }}
+          title="Предыдущая"
         >
           ‹
         </button>
@@ -96,6 +97,7 @@ export default function Pagination({ page, limit, total, totalPages, onPageChang
             color: 'var(--color-text)',
             border: '1px solid var(--color-border)',
           }}
+          title="Следующая"
         >
           ›
         </button>

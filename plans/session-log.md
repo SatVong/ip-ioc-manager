@@ -100,6 +100,14 @@
 - `frontend/src/components/csv/CsvImport.tsx` — импорт CSV с парсингом
 - `frontend/src/components/csv/CsvExport.tsx` — экспорт CSV с BOM для Excel
 
+#### Frontend (React + TypeScript + Vite) — Этап 7 (Тесты фронтенда)
+- `frontend/vitest.config.ts` — конфигурация Vitest (jsdom, globals, setup)
+- `frontend/src/test/setup.ts` — setup-файл с `@testing-library/jest-dom`
+- `frontend/src/test/usePagination.test.ts` — 8 unit-тестов для хука usePagination
+- `frontend/src/test/Modal.test.tsx` — 5 тестов для компонента Modal
+- `frontend/src/test/Pagination.test.tsx` — 7 тестов для компонента Pagination
+- `frontend/src/test/StatsCard.test.tsx` — 4 теста для компонента StatsCard
+
 #### Frontend (React + TypeScript + Vite) — Этап 5 (UsersPage)
 - `frontend/src/pages/UsersPage.tsx` — **обновлён** с заглушки до полной CRUD страницы управления пользователями
 
@@ -259,13 +267,17 @@ Page (usePagination + useRecords<T> + usePermissions)
 - ✅ **TopCountriesChart** — горизонтальный BarChart (Recharts) для топ-5 стран
 - ✅ **TimelineChart** — вертикальный BarChart (Recharts) для поступлений по месяцам
 - ✅ **DashboardPage** — обновлена с HTML-баров на Recharts компоненты
+- ✅ **24 frontend-теста** — все проходят (Vitest + React Testing Library)
+- ✅ **vitest.config.ts** — настроен Vitest (jsdom, globals, setup)
+- ✅ **usePagination.test.ts** — 8 тестов (инициализация, setPage, setLimit, toggleSort, setFilter, clearFilters, setGlobalSearch, reset)
+- ✅ **Modal.test.tsx** — 5 тестов (рендер, backdrop, Escape, custom width)
+- ✅ **Pagination.test.tsx** — 7 тестов (page info, total, limit, prev/next disabled, ellipsis, single page)
+- ✅ **StatsCard.test.tsx** — 4 теста (label/value, locale formatting, zero, icon types)
 
 ### [В ПРОЦЕССЕ] — частично сделано
-- 🔄 **Этап 7 (Тесты фронтенда)**: не начат
 - 🔄 **Этап 8 (Docker + деплой)**: Dockerfile обновлён, но multi-stage не протестирован в полном цикле
 
 ### [В ПЛАНЕ] — обсуждали, но не начали
-- 📋 Тесты фронтенда (Vitest + React Testing Library)
 - 📋 Полное удаление старого Vanilla JS фронтенда
 - 📋 Финальное тестирование Docker-сборки
 
@@ -348,11 +360,11 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
 ```
 Я работаю над проектом IP/IOC Manager — системой управления IP-адресами и индикаторами компрометации (IOC) для кибербезопасности. Это трёхкомпонентное веб-приложение (Nginx → Express → PostgreSQL).
 
-Текущий статус: завершён Этап 6 (Дашборд с Recharts). Созданы: DataTable<T>, FilterBar, Pagination, Modal, CSV, хуки usePagination/useRecords<T>/usePermissions, 3 страницы записей (IpRecordsPage, IocRecordsPage, WhiteIpRecordsPage) с полным CRUD, UsersPage с таблицей пользователей и 3 модальными окнами, DashboardPage с Recharts (StatsCard, TopCountriesChart, TimelineChart). TypeScript компилируется без ошибок, Vite build успешен (701 modules, 712KB JS + 21KB CSS).
+Текущий статус: завершён Этап 7 (Тесты фронтенда). Созданы: DataTable<T>, FilterBar, Pagination, Modal, CSV, хуки usePagination/useRecords<T>/usePermissions, 3 страницы записей (IpRecordsPage, IocRecordsPage, WhiteIpRecordsPage) с полным CRUD, UsersPage с таблицей пользователей и 3 модальными окнами, DashboardPage с Recharts (StatsCard, TopCountriesChart, TimelineChart), 24 frontend-теста (Vitest + React Testing Library) — все проходят. TypeScript компилируется без ошибок, Vite build успешен (701 modules, 712KB JS + 22KB CSS).
 
-Структура фронтенда: frontend/src/ (main.tsx, App.tsx, types/, api/, context/, hooks/, utils/, components/{layout,ui,table,filters,pagination,modal,csv,dashboard}, pages/).
+Структура фронтенда: frontend/src/ (main.tsx, App.tsx, types/, api/, context/, hooks/, utils/, components/{layout,ui,table,filters,pagination,modal,csv,dashboard}, pages/, test/).
 
-Остановились на том, что нужно переходить к Этапу 7 (Тесты фронтенда Vitest + React Testing Library).
+Остановились на том, что нужно переходить к Этапу 8 (Docker + финальный деплой).
 
 План миграции: plans/migration-v2.md
 Анализ проекта: New-project-README.md
@@ -361,4 +373,4 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
 
 ---
 
-*Сгенерирован: 2026-07-02T17:30 UTC+3 (обновлён: Этап 6 — Дашборд с Recharts)*
+*Сгенерирован: 2026-07-02T17:49 UTC+3 (обновлён: Этап 7 — Тесты фронтенда)*
