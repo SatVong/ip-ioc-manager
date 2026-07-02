@@ -103,6 +103,11 @@
 #### Frontend (React + TypeScript + Vite) — Этап 5 (UsersPage)
 - `frontend/src/pages/UsersPage.tsx` — **обновлён** с заглушки до полной CRUD страницы управления пользователями
 
+#### Frontend (React + TypeScript + Vite) — Этап 6 (Дашборд с Recharts)
+- `frontend/src/components/dashboard/StatsCard.tsx` — карточка статистики с SVG-иконкой и цветным индикатором
+- `frontend/src/components/dashboard/TopCountriesChart.tsx` — горизонтальный BarChart (Recharts) для топ-5 стран с цветными барами
+- `frontend/src/components/dashboard/TimelineChart.tsx` — вертикальный BarChart (Recharts) для поступлений по месяцам
+
 ### ИЗМЕНЁННЫЕ ФАЙЛЫ
 - `backend/package.json` — добавлены скрипты (build, dev, test, lint), зависимости (typescript, jest, supertest, express-rate-limit, @types/*)
 - `docker-compose.yml` — добавлен healthcheck для backend сервиса
@@ -250,14 +255,16 @@ Page (usePagination + useRecords<T> + usePermissions)
 - ✅ **IocRecordsPage** — полная CRUD страница (IOC Хеши)
 - ✅ **WhiteIpRecordsPage** — полная CRUD страница (Белые IP)
 - ✅ **UsersPage** — полная CRUD страница управления пользователями (таблица, create/edit/toggle/password/delete, 3 модальных окна)
+- ✅ **StatsCard** — карточка статистики с SVG-иконкой и цветным индикатором
+- ✅ **TopCountriesChart** — горизонтальный BarChart (Recharts) для топ-5 стран
+- ✅ **TimelineChart** — вертикальный BarChart (Recharts) для поступлений по месяцам
+- ✅ **DashboardPage** — обновлена с HTML-баров на Recharts компоненты
 
 ### [В ПРОЦЕССЕ] — частично сделано
-- 🔄 **Этап 6 (Дашборд с Recharts)**: DashboardPage уже создана, но использует простые HTML-бары вместо Recharts
 - 🔄 **Этап 7 (Тесты фронтенда)**: не начат
 - 🔄 **Этап 8 (Docker + деплой)**: Dockerfile обновлён, но multi-stage не протестирован в полном цикле
 
 ### [В ПЛАНЕ] — обсуждали, но не начали
-- 📋 Дашборд с Recharts (StatsCard, TopCountries, TimelineChart компоненты)
 - 📋 Тесты фронтенда (Vitest + React Testing Library)
 - 📋 Полное удаление старого Vanilla JS фронтенда
 - 📋 Финальное тестирование Docker-сборки
@@ -341,11 +348,11 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
 ```
 Я работаю над проектом IP/IOC Manager — системой управления IP-адресами и индикаторами компрометации (IOC) для кибербезопасности. Это трёхкомпонентное веб-приложение (Nginx → Express → PostgreSQL).
 
-Текущий статус: завершён Этап 5 (UsersPage с полным CRUD). Созданы: DataTable<T>, FilterBar, Pagination, Modal, CSV, хуки usePagination/useRecords<T>/usePermissions, 3 страницы записей (IpRecordsPage, IocRecordsPage, WhiteIpRecordsPage) с полным CRUD, UsersPage с таблицей пользователей и 3 модальными окнами (create/edit/password). TypeScript компилируется без ошибок, Vite build успешен (119 modules, 349KB JS + 20KB CSS).
+Текущий статус: завершён Этап 6 (Дашборд с Recharts). Созданы: DataTable<T>, FilterBar, Pagination, Modal, CSV, хуки usePagination/useRecords<T>/usePermissions, 3 страницы записей (IpRecordsPage, IocRecordsPage, WhiteIpRecordsPage) с полным CRUD, UsersPage с таблицей пользователей и 3 модальными окнами, DashboardPage с Recharts (StatsCard, TopCountriesChart, TimelineChart). TypeScript компилируется без ошибок, Vite build успешен (701 modules, 712KB JS + 21KB CSS).
 
-Структура фронтенда: frontend/src/ (main.tsx, App.tsx, types/, api/, context/, hooks/, utils/, components/{layout,ui,table,filters,pagination,modal,csv}, pages/).
+Структура фронтенда: frontend/src/ (main.tsx, App.tsx, types/, api/, context/, hooks/, utils/, components/{layout,ui,table,filters,pagination,modal,csv,dashboard}, pages/).
 
-Остановились на том, что нужно переходить к Этапу 6 (Дашборд с Recharts).
+Остановились на том, что нужно переходить к Этапу 7 (Тесты фронтенда Vitest + React Testing Library).
 
 План миграции: plans/migration-v2.md
 Анализ проекта: New-project-README.md
@@ -354,4 +361,4 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
 
 ---
 
-*Сгенерирован: 2026-07-02T17:19 UTC+3 (обновлён: Этап 5 — UsersPage с полным CRUD)*
+*Сгенерирован: 2026-07-02T17:30 UTC+3 (обновлён: Этап 6 — Дашборд с Recharts)*
