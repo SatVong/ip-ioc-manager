@@ -29,4 +29,4 @@ api.interceptors.response.use(
   }
 )
 
-export d
+export default api
