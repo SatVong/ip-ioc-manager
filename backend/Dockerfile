@@ -26,9 +26,6 @@ RUN npm install --production
 # Копируем скомпилированный код из builder
 COPY --from=builder /app/dist ./dist
 
-# Копируем фронтенд для статики
-COPY --from=builder /app/../frontend ../frontend
-
 # Порт, который слушает Express
 EXPOSE 3000
 
