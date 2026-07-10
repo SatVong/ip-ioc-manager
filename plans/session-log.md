@@ -116,6 +116,10 @@
 - `frontend/src/components/dashboard/TopCountriesChart.tsx` — горизонтальный BarChart (Recharts) для топ-5 стран с цветными барами
 - `frontend/src/components/dashboard/TimelineChart.tsx` — вертикальный BarChart (Recharts) для поступлений по месяцам
 
+#### Frontend — Docker (Этап 8)
+- `frontend/Dockerfile` — multi-stage build: Stage 1 (builder) Vite build, Stage 2 (production) Nginx + dist
+- `frontend/nginx.conf` — Nginx config: SPA routing (try_files /index.html), proxy /api/ и /api-docs → backend, кеширование статики 1 год
+
 ### ИЗМЕНЁННЫЕ ФАЙЛЫ
 - `backend/package.json` — добавлены скрипты (build, dev, test, lint), зависимости (typescript, jest, supertest, express-rate-limit, @types/*)
 - `docker-compose.yml` — добавлен healthcheck для backend сервиса
@@ -123,6 +127,17 @@
 - `frontend/src/pages/IocRecordsPage.tsx` — **обновлён** с заглушки до полной CRUD страницы (тот же паттерн)
 - `frontend/src/pages/WhiteIpRecordsPage.tsx` — **обновлён** с заглушки до полной CRUD страницы (тот же паттерн)
 - `frontend/src/pages/UsersPage.tsx` — **обновлён** с заглушки до полной CRUD страницы управления пользователями
+- `backend/Dockerfile` — **обновлён** (убрана строка копирования старого фронтенда)
+- `frontend/Dockerfile` — **обновлён** (переписан на multi-stage: Vite build → Nginx)
+
+### УДАЛЁННЫЕ ФАЙЛЫ (Этап 8 — старый Vanilla JS фронтенд)
+- `frontend/js/` — вся папка (25+ файлов: app.js, ioc.js, white-ip.js, config.js, serverPagination*.js, actions/*, api/*, auth/*, pagination/*, theme/*, ui/*, validators/*, constants/*)
+- `frontend/css/` — вся папка (15+ файлов: style.css, responsive.css, auth/*, base/*, components/*, pages/*)
+- `frontend/login.html` — старая страница входа
+- `frontend/ioc.html` — старая страница IOC
+- `frontend/white-ip.html` — старая страница White IP
+- `frontend/users.html` — старая страница пользователей
+- `frontend/profile.html` — старая страница профиля
 
 ---
 
@@ -274,12 +289,13 @@ Page (usePagination + useRecords<T> + usePermissions)
 - ✅ **Pagination.test.tsx** — 7 тестов (page info, total, limit, prev/next disabled, ellipsis, single page)
 - ✅ **StatsCard.test.tsx** — 4 теста (label/value, locale formatting, zero, icon types)
 
-### [В ПРОЦЕССЕ] — частично сделано
-- 🔄 **Этап 8 (Docker + деплой)**: Dockerfile обновлён, но multi-stage не протестирован в полном цикле
-
-### [В ПЛАНЕ] — обсуждали, но не начали
-- 📋 Полное удаление старого Vanilla JS фронтенда
-- 📋 Финальное тестирование Docker-сборки
+### [ГОТОВО] — Этап 8 (Docker + финальный деплой)
+- ✅ Frontend Dockerfile переписан на multi-stage build (Vite build → Nginx)
+- ✅ Backend Dockerfile очищен от копирования старого фронтенда
+- ✅ Старый Vanilla JS фронтенд полностью удалён (frontend/js/, frontend/css/, 5 HTML-файлов)
+- ✅ Nginx настроен: SPA routing (try_files /index.html), proxy /api/ и /api-docs → backend, кеширование статики 1 год
+- ✅ docker-compose.yml: 3 сервиса (database, backend, frontend), healthcheck для БД и backend
+- ✅ Осталось: запустить `docker compose build` локально для финальной проверки
 
 ---
 
@@ -297,7 +313,7 @@ Page (usePagination + useRecords<T> + usePermissions)
 - ❓ **Путь к frontend в index.ts**: `path.join(__dirname, '../../frontend')` — при запуске из `dist/` может не совпадать. Нужно протестировать в Docker
 - ❓ **Типы для jsonwebtoken**: пришлось использовать числовой `expiresIn` (7 дней в секундах) вместо строки `'7d'` из-за несовместимости типов TypeScript 6
 - ❓ **Тесты с реальной БД**: текущие integration-тесты не подключаются к реальной PostgreSQL. Для полноценного тестирования API нужен testcontainers или mock
-- ❓ **Старый Vanilla JS фронтенд**: файлы в `frontend/js/`, `frontend/css/`, `frontend/*.html` всё ещё существуют рядом с новыми React-файлами
+- ❓ **Docker build не протестирован**: на машине разработки не установлен Docker. Нужно запустить `docker compose build` локально
 
 ---
 
@@ -360,11 +376,11 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
 ```
 Я работаю над проектом IP/IOC Manager — системой управления IP-адресами и индикаторами компрометации (IOC) для кибербезопасности. Это трёхкомпонентное веб-приложение (Nginx → Express → PostgreSQL).
 
-Текущий статус: завершён Этап 7 (Тесты фронтенда). Созданы: DataTable<T>, FilterBar, Pagination, Modal, CSV, хуки usePagination/useRecords<T>/usePermissions, 3 страницы записей (IpRecordsPage, IocRecordsPage, WhiteIpRecordsPage) с полным CRUD, UsersPage с таблицей пользователей и 3 модальными окнами, DashboardPage с Recharts (StatsCard, TopCountriesChart, TimelineChart), 24 frontend-теста (Vitest + React Testing Library) — все проходят. TypeScript компилируется без ошибок, Vite build успешен (701 modules, 712KB JS + 22KB CSS).
+Текущий статус: **все 8 этапов миграции завершены**. Backend полностью переписан на TypeScript (модульная архитектура: 7 роутов, 8 контроллеров, 2 сервиса, 3 middleware, 14 тестов). Frontend полностью переписан на React 19 + Vite 8 + TypeScript 6 + Tailwind CSS v4 (60+ файлов: DataTable<T>, FilterBar, Pagination, Modal, CSV, хуки usePagination/useRecords<T>/usePermissions, 3 страницы записей с полным CRUD, UsersPage, DashboardPage с Recharts, 24 теста). Docker: multi-stage build для frontend (Vite → Nginx) и backend (tsc → node), Nginx с SPA routing и проксированием API. Старый Vanilla JS фронтенд удалён.
 
-Структура фронтенда: frontend/src/ (main.tsx, App.tsx, types/, api/, context/, hooks/, utils/, components/{layout,ui,table,filters,pagination,modal,csv,dashboard}, pages/, test/).
+Структура: frontend/src/ (main.tsx, App.tsx, types/, api/, context/, hooks/, utils/, components/{layout,ui,table,filters,pagination,modal,csv,dashboard}, pages/, test/).
 
-Остановились на том, что нужно переходить к Этапу 8 (Docker + финальный деплой).
+Остановились на том, что нужно запустить `docker compose build` для финальной проверки сборки.
 
 План миграции: plans/migration-v2.md
 Анализ проекта: New-project-README.md
@@ -373,4 +389,4 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
 
 ---
 
-*Сгенерирован: 2026-07-02T17:49 UTC+3 (обновлён: Этап 7 — Тесты фронтенда)*
+*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: Этап 8 — Docker + финальный деплой)*

@@ -22,7 +22,7 @@ describe('Pagination Types', () => {
   it('should create valid PaginationOptions', () => {
     const options: PaginationOptions = {
       tableName: 'ip_records',
-      columnMap: { 'id': 'id', 'IP-адресс': 'ip' },
+      columnMap: { 'id': 'id', 'IP-адрес': 'ip' },
       searchColumns: ['ip', 'from_source'],
     };
 

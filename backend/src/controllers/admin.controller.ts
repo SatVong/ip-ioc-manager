@@ -187,6 +187,27 @@ export async function clearIocRecords(req: Request, res: Response): Promise<void
   }
 }
 
+export async function clearWhiteIpRecords(req: Request, res: Response): Promise<void> {
+  try {
+    if (!(await checkAdmin(req, res))) return;
+
+    const countResult = await pool.query('SELECT COUNT(*) FROM white_ip_records');
+    const count = parseInt(countResult.rows[0].count, 10);
+
+    await pool.query('TRUNCATE TABLE white_ip_records RESTART IDENTITY');
+
+    await pool.query(
+      'INSERT INTO user_logs (user_id, action, details) VALUES ($1, $2, $3)',
+      [req.user!.userId, 'CLEAR_WHITE_IP_RECORDS', JSON.stringify({ deleted_count: count })]
+    );
+
+    res.json({ success: true, message: `Очищено ${count} записей из таблицы Белых IP` });
+  } catch (err) {
+    console.error((err as Error).message);
+    res.status(500).json({ error: 'Ошибка при очистке таблицы' });
+  }
+}
+
 export async function clearUsers(req: Request, res: Response): Promise<void> {
   try {
     if (!(await checkAdmin(req, res))) return;

@@ -10,6 +10,10 @@ interface UserFormData {
   username: string
   password: string
   full_name: string
+  position: string
+  department: string
+  email: string
+  is_active: boolean
   role: 'admin' | 'user'
   can_create: boolean
   can_edit: boolean
@@ -23,6 +27,10 @@ const emptyFormData: UserFormData = {
   username: '',
   password: '',
   full_name: '',
+  position: '',
+  department: '',
+  email: '',
+  is_active: true,
   role: 'user',
   can_create: false,
   can_edit: false,
@@ -74,6 +82,10 @@ export default function UsersPage() {
         username: formData.username,
         password: formData.password,
         full_name: formData.full_name,
+        position: formData.position,
+        department: formData.department,
+        email: formData.email,
+        is_active: formData.is_active,
         role: formData.role,
       })
       // Update permissions after creation
@@ -175,6 +187,10 @@ export default function UsersPage() {
       username: targetUser.username,
       password: '',
       full_name: targetUser.full_name,
+      position: targetUser.position || '',
+      department: targetUser.department || '',
+      email: targetUser.email || '',
+      is_active: targetUser.is_active,
       role: targetUser.role,
       can_create: targetUser.can_create,
       can_edit: targetUser.can_edit,
@@ -420,6 +436,140 @@ export default function UsersPage() {
               }}
               placeholder="Введите ФИО"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+              Должность
+            </label>
+            <input
+              type="text"
+              value={formData.position}
+              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg text-sm border"
+              style={{
+                backgroundColor: 'var(--color-card-bg)',
+                color: 'var(--color-text)',
+                borderColor: 'var(--color-border)',
+              }}
+              placeholder="Введите должность"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+              Отдел
+            </label>
+            <input
+              type="text"
+              value={formData.department}
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg text-sm border"
+              style={{
+                backgroundColor: 'var(--color-card-bg)',
+                color: 'var(--color-text)',
+                borderColor: 'var(--color-border)',
+              }}
+              placeholder="Введите отдел"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+              Email
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg text-sm border"
+              style={{
+                backgroundColor: 'var(--color-card-bg)',
+                color: 'var(--color-text)',
+                borderColor: 'var(--color-border)',
+              }}
+              placeholder="Введите email"
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border cursor-pointer"
+              style={{
+                borderColor: 'var(--color-border)',
+                backgroundColor: formData.is_active ? '#22c55e10' : 'transparent',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                className="rounded"
+              />
+              <span style={{ color: 'var(--color-text)' }}>Активен</span>
+            </label>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+              Должность
+            </label>
+            <input
+              type="text"
+              value={formData.position}
+              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg text-sm border"
+              style={{
+                backgroundColor: 'var(--color-card-bg)',
+                color: 'var(--color-text)',
+                borderColor: 'var(--color-border)',
+              }}
+              placeholder="Введите должность"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+              Отдел
+            </label>
+            <input
+              type="text"
+              value={formData.department}
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg text-sm border"
+              style={{
+                backgroundColor: 'var(--color-card-bg)',
+                color: 'var(--color-text)',
+                borderColor: 'var(--color-border)',
+              }}
+              placeholder="Введите отдел"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+              Email
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg text-sm border"
+              style={{
+                backgroundColor: 'var(--color-card-bg)',
+                color: 'var(--color-text)',
+                borderColor: 'var(--color-border)',
+              }}
+              placeholder="Введите email"
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border cursor-pointer"
+              style={{
+                borderColor: 'var(--color-border)',
+                backgroundColor: formData.is_active ? '#22c55e10' : 'transparent',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                className="rounded"
+              />
+              <span style={{ color: 'var(--color-text)' }}>Активен</span>
+            </label>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>

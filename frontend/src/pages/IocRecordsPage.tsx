@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import DataTable from '../components/table/DataTable'
 import FilterBar from '../components/filters/FilterBar'
+import SourceTabs from '../components/filters/SourceTabs'
 import Pagination from '../components/pagination/Pagination'
 import AddRecordModal from '../components/modal/AddRecordModal'
 import ExceptionModal from '../components/modal/ExceptionModal'
@@ -10,6 +11,7 @@ import { usePagination } from '../hooks/usePagination'
 import { useRecords } from '../hooks/useRecords'
 import { usePermissions } from '../hooks/usePermissions'
 import { useNotification } from '../hooks/useNotification'
+import { useAuth } from '../hooks/useAuth'
 import { IOC_RECORD_COLUMNS } from '../utils/constants'
 import * as iocRecordsApi from '../api/iocRecords'
 import type { IocRecord } from '../types'
@@ -18,15 +20,24 @@ export default function IocRecordsPage() {
   const pagination = usePagination()
   const { canCreate, canEdit, canDelete, canImport, canExport } = usePermissions()
   const { addNotification } = useNotification()
+  const { user } = useAuth()
   const [showAddModal, setShowAddModal] = useState(false)
   const [exceptionRecord, setExceptionRecord] = useState<IocRecord | null>(null)
-  const [excludedIds] = useState<Set<number>>(new Set())
+  const [activeMse, setActiveMse] = useState<number | null>(null)
+
+  const extraParams = useMemo(() => {
+    const params: Record<string, unknown> = {}
+    if (activeMse !== null) {
+      params.mse = activeMse
+    }
+    return params
+  }, [activeMse])
 
   const fetchRecords = useCallback(
     async (params: Record<string, unknown>) => {
-      return await iocRecordsApi.getIocRecordsPaginated(params)
+      return await iocRecordsApi.getIocRecordsPaginated({ ...params, ...extraParams })
     },
-    []
+    [extraParams]
   )
 
   const { data, total, totalPages, loading, refresh } = useRecords<IocRecord>({
@@ -35,11 +46,33 @@ export default function IocRecordsPage() {
     errorMessage: 'Ошибка загрузки IOC записей',
   })
 
+  const mseCounts = useMemo(() => {
+    const counts: Record<number, number> = {}
+    for (const record of data) {
+      if (record.mses && Array.isArray(record.mses)) {
+        for (const m of record.mses) {
+          counts[m] = (counts[m] || 0) + 1
+        }
+      }
+    }
+    return counts
+  }, [data])
+
   const handleToggleMse = useCallback(
-    async (record: IocRecord) => {
-      addNotification('info', `Редактирование МСЭ для записи #${record.id}`)
+    async (record: IocRecord, mse: number) => {
+      try {
+        const currentMses = record.mses || []
+        const newMses = currentMses.includes(mse)
+          ? currentMses.filter((m) => m !== mse)
+          : [...currentMses, mse]
+        await iocRecordsApi.updateIocRecord(record.id, { mses: newMses } as Partial<IocRecord>)
+        addNotification('success', `МСЭ ${mse} ${currentMses.includes(mse) ? 'убран' : 'добавлен'}`)
+        refresh()
+      } catch {
+        addNotification('error', 'Ошибка при изменении МСЭ')
+      }
     },
-    [addNotification]
+    [addNotification, refresh]
   )
 
   const handleEdit = useCallback(
@@ -78,14 +111,14 @@ export default function IocRecordsPage() {
       if (!exceptionRecord) return
       try {
         await iocRecordsApi.updateIocRecord(exceptionRecord.id, data as Partial<IocRecord>)
-        addNotification('success', 'Запись исключена')
-        excludedIds.add(exceptionRecord.id)
+        addNotification('success', 'Исключение сохранено')
+        setExceptionRecord(null)
         refresh()
       } catch {
-        addNotification('error', 'Ошибка при исключении записи')
+        addNotification('error', 'Ошибка при сохранении исключения')
       }
     },
-    [exceptionRecord, addNotification, excludedIds, refresh]
+    [exceptionRecord, addNotification, refresh]
   )
 
   const handleAddRecord = useCallback(
@@ -93,6 +126,7 @@ export default function IocRecordsPage() {
       try {
         await iocRecordsApi.createIocRecord(data as Partial<IocRecord>)
         addNotification('success', 'Запись добавлена')
+        setShowAddModal(false)
         refresh()
       } catch {
         addNotification('error', 'Ошибка при добавлении записи')
@@ -118,9 +152,9 @@ export default function IocRecordsPage() {
 
   const isRecordExcluded = useCallback(
     (record: IocRecord) => {
-      return !!(excludedIds.has(record.id) || (record.note_out && record.note_out !== '-' && record.note_out !== ''))
+      return !!(record.note_out && record.note_out !== '-' && record.note_out !== '')
     },
-    [excludedIds]
+    []
   )
 
   return (
@@ -143,6 +177,13 @@ export default function IocRecordsPage() {
           )}
         </div>
       </div>
+
+      <SourceTabs
+        variant="ioc"
+        activeMse={activeMse}
+        onChange={setActiveMse}
+        counts={mseCounts}
+      />
 
       <FilterBar
         columns={IOC_RECORD_COLUMNS}
@@ -169,7 +210,10 @@ export default function IocRecordsPage() {
         canEdit={canEdit}
         canDelete={canDelete}
         variant="ioc"
+        activeMses={activeMse !== null ? [activeMse] : undefined}
         emptyMessage="IOC записи не найдены"
+        filters={pagination.filters}
+        onFilterChange={pagination.setFilter}
       />
 
       <Pagination
@@ -187,6 +231,8 @@ export default function IocRecordsPage() {
         onSave={handleAddRecord}
         columns={IOC_RECORD_COLUMNS}
         title="IOC запись"
+        currentUser={user?.full_name || user?.username || ''}
+        variant="ioc"
       />
 
       {exceptionRecord && (
@@ -194,7 +240,9 @@ export default function IocRecordsPage() {
           isOpen={!!exceptionRecord}
           onClose={() => setExceptionRecord(null)}
           onSave={handleSaveException}
-          recordLabel={`IOC #${exceptionRecord.id}`}
+          record={exceptionRecord}
+          currentUser={user?.full_name || user?.username || ''}
+          variant="ioc"
         />
       )}
     </div>

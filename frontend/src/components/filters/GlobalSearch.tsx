@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useState, useEffect, type KeyboardEvent } from 'react'
 
 interface GlobalSearchProps {
   value: string
@@ -8,6 +8,21 @@ interface GlobalSearchProps {
 
 export default function GlobalSearch({ value, onChange, placeholder = 'Поиск по всем полям...' }: GlobalSearchProps) {
   const [local, setLocal] = useState(value)
+
+  // Sync local state when external value changes (e.g., on clear)
+  useEffect(() => {
+    setLocal(value)
+  }, [value])
+
+  // Debounce: fire onChange 300ms after last keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (local !== value) {
+        onChange(local)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [local, onChange, value])
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -31,7 +46,6 @@ export default function GlobalSearch({ value, onChange, placeholder = 'Поис�
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         onKeyDown={handleKeyDown}
-        onBlur={() => onChange(local)}
         placeholder={placeholder}
         className="w-64 pl-9 pr-3 py-2 rounded-lg border text-sm outline-none transition-colors"
         style={{

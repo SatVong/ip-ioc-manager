@@ -631,7 +631,7 @@ const options = {
                         { 
                             name: 'filters', 
                             in: 'query', 
-                            description: 'JSON-строка с фильтрами, например: {"Страна":"RU","IP-адресс":"192.168"}',
+                            description: 'JSON-строка с фильтрами, например: {"Страна":"RU","IP-адрес":"192.168"}',
                             schema: { type: 'string' }
                         },
                         { name: 'globalSearch', in: 'query', schema: { type: 'string' } }

@@ -1,6 +1,5 @@
 import type { ColumnDef } from '../../utils/constants'
 import GlobalSearch from './GlobalSearch'
-import ColumnFilter from './ColumnFilter'
 
 interface FilterBarProps {
   columns: ColumnDef<any>[]
@@ -37,7 +36,7 @@ export default function FilterBar({
                 border: '1px solid var(--color-danger)',
               }}
             >
-              Сбросить фильтры
+              Сбросить все фильтры
             </button>
           )}
         </div>
@@ -45,21 +44,6 @@ export default function FilterBar({
           Всего: <strong style={{ color: 'var(--color-text)' }}>{total}</strong>
         </span>
       </div>
-      {columns.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {columns
-            .filter((col) => col.filterable)
-            .slice(0, 6)
-            .map((col) => (
-              <ColumnFilter
-                key={col.key as string}
-                column={col}
-                value={filters[col.key as string] || ''}
-                onChange={(value) => onFilterChange(col.key as string, value)}
-              />
-            ))}
-        </div>
-      )}
     </div>
   )
 }

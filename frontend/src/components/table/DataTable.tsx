@@ -9,7 +9,7 @@ interface DataTableProps<T extends { id: number }> {
   sortBy: string
   sortOrder: 'asc' | 'desc'
   onSort: (column: string) => void
-  onToggleMse: (record: T) => void
+  onToggleMse: (record: T, mse: number) => void
   onEdit: (record: T, key: string, value: string) => void
   onDelete: (record: T) => void
   onOpenException: (record: T) => void
@@ -18,6 +18,12 @@ interface DataTableProps<T extends { id: number }> {
   canDelete: boolean
   variant?: 'ip' | 'ioc' | 'white-ip'
   emptyMessage?: string
+  /** Активные mse для подсветки в квадратиках */
+  activeMses?: number[]
+  /** Фильтры для отображения в заголовке таблицы */
+  filters?: Record<string, string>
+  /** Обработчик изменения фильтра */
+  onFilterChange?: (key: string, value: string) => void
 }
 
 export default function DataTable<T extends { id: number }>({
@@ -36,6 +42,9 @@ export default function DataTable<T extends { id: number }>({
   canDelete,
   variant = 'ip',
   emptyMessage = 'Нет данных',
+  activeMses,
+  filters,
+  onFilterChange,
 }: DataTableProps<T>) {
   if (loading) {
     return (
@@ -63,6 +72,8 @@ export default function DataTable<T extends { id: number }>({
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSort={onSort}
+          filters={filters}
+          onFilterChange={onFilterChange}
         />
         <tbody>
           {data.map((record) => (
@@ -78,6 +89,7 @@ export default function DataTable<T extends { id: number }>({
               canEdit={canEdit}
               canDelete={canDelete}
               variant={variant}
+              activeMses={activeMses}
             />
           ))}
         </tbody>

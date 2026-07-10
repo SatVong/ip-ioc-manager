@@ -5,9 +5,13 @@ interface TableHeaderProps {
   sortBy: string
   sortOrder: 'asc' | 'desc'
   onSort: (column: string) => void
+  /** Фильтры для отображения в заголовке */
+  filters?: Record<string, string>
+  /** Обработчик изменения фильтра */
+  onFilterChange?: (key: string, value: string) => void
 }
 
-export default function TableHeader({ columns, sortBy, sortOrder, onSort }: TableHeaderProps) {
+export default function TableHeader({ columns, sortBy, sortOrder, onSort, filters, onFilterChange }: TableHeaderProps) {
   return (
     <thead>
       <tr>
@@ -35,6 +39,35 @@ export default function TableHeader({ columns, sortBy, sortOrder, onSort }: Tabl
                 </svg>
               )}
             </div>
+            {/* Фильтр под заголовком колонки */}
+            {col.filterable && onFilterChange && col.type !== 'mse' && col.type !== 'readonly' && (
+              <div className="mt-1 relative" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="text"
+                  value={filters?.[col.key as string] || ''}
+                  onChange={(e) => onFilterChange(col.key as string, e.target.value)}
+                  placeholder="Фильтр..."
+                  className="w-full px-1.5 py-1 rounded border text-[10px] outline-none transition-colors"
+                  style={{
+                    backgroundColor: 'var(--color-bg)',
+                    borderColor: filters?.[col.key as string] ? 'var(--color-primary)' : 'var(--color-border)',
+                    color: 'var(--color-text)',
+                  }}
+                />
+                {filters?.[col.key as string] && (
+                  <button
+                    onClick={() => onFilterChange(col.key as string, '')}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded hover:opacity-80"
+                    style={{ color: 'var(--color-danger)' }}
+                    title="Сбросить фильтр"
+                  >
+                    <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path d="M3 3l6 6M9 3l-6 6" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
           </th>
         ))}
         <th

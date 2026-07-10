@@ -10,18 +10,26 @@ export default function CsvExport({ data, columns, filename = 'export.csv' }: Cs
   const handleExport = () => {
     if (data.length === 0) return
 
+    // Функция экранирования для CSV (оборачиваем в кавычки если есть ; или ")
+    const escapeCsv = (val: string): string => {
+      if (val.includes(';') || val.includes('"') || val.includes('\n')) {
+        return `"${val.replace(/"/g, '""')}"`
+      }
+      return val
+    }
+
     const headers = columns.map((col) => col.label)
     const rows = data.map((record) =>
       columns.map((col) => {
         const value = record[col.key as string]
         if (Array.isArray(value)) return value.join(';')
-        return String(value ?? '')
+        return escapeCsv(String(value ?? ''))
       })
     )
 
     const csvContent = [
-      headers.join(','),
-      ...rows.map((row) => row.join(',')),
+      headers.join(';'),
+      ...rows.map((row) => row.join(';')),
     ].join('\n')
 
     const BOM = '\uFEFF'

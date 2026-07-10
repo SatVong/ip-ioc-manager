@@ -15,6 +15,10 @@ export async function createUser(data: {
   username: string
   password: string
   full_name?: string
+  position?: string
+  department?: string
+  email?: string
+  is_active?: boolean
   role?: string
 }): Promise<User> {
   const response = await api.post<User>('/users', data)

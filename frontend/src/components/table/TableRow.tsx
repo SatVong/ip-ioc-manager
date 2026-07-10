@@ -8,13 +8,15 @@ interface TableRowProps<T> {
   record: T
   columns: ColumnDef<any>[]
   isExcluded: boolean
-  onToggleMse: (record: T) => void
+  onToggleMse: (record: T, mse: number) => void
   onEdit: (record: T, key: string, value: string) => void
   onDelete: (record: T) => void
   onOpenException: (record: T) => void
   canEdit: boolean
   canDelete: boolean
   variant?: 'ip' | 'ioc' | 'white-ip'
+  /** Активные mse для подсветки в квадратиках */
+  activeMses?: number[]
 }
 
 export default function TableRow<T extends { id: number }>({
@@ -28,6 +30,7 @@ export default function TableRow<T extends { id: number }>({
   canEdit,
   canDelete,
   variant = 'ip',
+  activeMses,
 }: TableRowProps<T>) {
   const [editingKey, setEditingKey] = useState<string | null>(null)
 
@@ -54,8 +57,23 @@ export default function TableRow<T extends { id: number }>({
     }
 
     // Кастомный рендеринг по типу
-    if (col.type === 'mse' && Array.isArray(value)) {
-      return <MseBadges mses={value as number[]} variant={variant === 'ioc' ? 'ioc' : 'ip'} />
+    if (col.type === 'mse') {
+      // Колонка "Где внесено" — кликабельные квадратики
+      if (col.key === 'mses') {
+        return (
+          <MseBadges
+            mses={Array.isArray(value) ? (value as number[]) : []}
+            variant={variant === 'ioc' ? 'ioc' : 'ip'}
+            mode="toggle"
+            activeMses={activeMses}
+            onToggleMse={(mse) => onToggleMse(record, mse)}
+          />
+        )
+      }
+      // Остальные mse-колонки — обычные бейджи
+      if (Array.isArray(value)) {
+        return <MseBadges mses={value as number[]} variant={variant === 'ioc' ? 'ioc' : 'ip'} />
+      }
     }
 
     if (col.type === 'date') {
@@ -133,13 +151,13 @@ export default function TableRow<T extends { id: number }>({
         <div className="flex items-center gap-1">
           {canEdit && (
             <button
-              onClick={() => onToggleMse(record)}
+              onClick={() => onOpenException(record)}
               className="p-1 rounded transition-colors hover:opacity-80"
               style={{ color: 'var(--color-primary)' }}
-              title="Изменить МСЭ"
+              title="Исключить / редактировать исключение"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </button>
           )}

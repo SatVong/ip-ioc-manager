@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import DataTable from '../components/table/DataTable'
 import FilterBar from '../components/filters/FilterBar'
+import SourceTabs from '../components/filters/SourceTabs'
 import Pagination from '../components/pagination/Pagination'
 import AddRecordModal from '../components/modal/AddRecordModal'
 import ExceptionModal from '../components/modal/ExceptionModal'
@@ -10,6 +11,7 @@ import { usePagination } from '../hooks/usePagination'
 import { useRecords } from '../hooks/useRecords'
 import { usePermissions } from '../hooks/usePermissions'
 import { useNotification } from '../hooks/useNotification'
+import { useAuth } from '../hooks/useAuth'
 import { WHITE_IP_RECORD_COLUMNS } from '../utils/constants'
 import * as whiteIpRecordsApi from '../api/whiteIpRecords'
 import type { WhiteIpRecord } from '../types'
@@ -18,15 +20,24 @@ export default function WhiteIpRecordsPage() {
   const pagination = usePagination()
   const { canCreate, canEdit, canDelete, canImport, canExport } = usePermissions()
   const { addNotification } = useNotification()
+  const { user } = useAuth()
   const [showAddModal, setShowAddModal] = useState(false)
   const [exceptionRecord, setExceptionRecord] = useState<WhiteIpRecord | null>(null)
-  const [excludedIds] = useState<Set<number>>(new Set())
+  const [activeMse, setActiveMse] = useState<number | null>(null)
+
+  const extraParams = useMemo(() => {
+    const params: Record<string, unknown> = {}
+    if (activeMse !== null) {
+      params.mse = activeMse
+    }
+    return params
+  }, [activeMse])
 
   const fetchRecords = useCallback(
     async (params: Record<string, unknown>) => {
-      return await whiteIpRecordsApi.getWhiteIpRecordsPaginated(params)
+      return await whiteIpRecordsApi.getWhiteIpRecordsPaginated({ ...params, ...extraParams })
     },
-    []
+    [extraParams]
   )
 
   const { data, total, totalPages, loading, refresh } = useRecords<WhiteIpRecord>({
@@ -35,11 +46,33 @@ export default function WhiteIpRecordsPage() {
     errorMessage: 'Ошибка загрузки White IP записей',
   })
 
+  const mseCounts = useMemo(() => {
+    const counts: Record<number, number> = {}
+    for (const record of data) {
+      if (record.mses && Array.isArray(record.mses)) {
+        for (const m of record.mses) {
+          counts[m] = (counts[m] || 0) + 1
+        }
+      }
+    }
+    return counts
+  }, [data])
+
   const handleToggleMse = useCallback(
-    async (record: WhiteIpRecord) => {
-      addNotification('info', `Редактирование МСЭ для записи #${record.id}`)
+    async (record: WhiteIpRecord, mse: number) => {
+      try {
+        const currentMses = record.mses || []
+        const newMses = currentMses.includes(mse)
+          ? currentMses.filter((m) => m !== mse)
+          : [...currentMses, mse]
+        await whiteIpRecordsApi.updateWhiteIpRecord(record.id, { mses: newMses } as Partial<WhiteIpRecord>)
+        addNotification('success', `МСЭ ${mse} ${currentMses.includes(mse) ? 'убран' : 'добавлен'}`)
+        refresh()
+      } catch {
+        addNotification('error', 'Ошибка при изменении МСЭ')
+      }
     },
-    [addNotification]
+    [addNotification, refresh]
   )
 
   const handleEdit = useCallback(
@@ -78,14 +111,14 @@ export default function WhiteIpRecordsPage() {
       if (!exceptionRecord) return
       try {
         await whiteIpRecordsApi.updateWhiteIpRecord(exceptionRecord.id, data as Partial<WhiteIpRecord>)
-        addNotification('success', 'Запись исключена')
-        excludedIds.add(exceptionRecord.id)
+        addNotification('success', 'Исключение сохранено')
+        setExceptionRecord(null)
         refresh()
       } catch {
-        addNotification('error', 'Ошибка при исключении записи')
+        addNotification('error', 'Ошибка при сохранении исключения')
       }
     },
-    [exceptionRecord, addNotification, excludedIds, refresh]
+    [exceptionRecord, addNotification, refresh]
   )
 
   const handleAddRecord = useCallback(
@@ -93,6 +126,7 @@ export default function WhiteIpRecordsPage() {
       try {
         await whiteIpRecordsApi.createWhiteIpRecord(data as Partial<WhiteIpRecord>)
         addNotification('success', 'Запись добавлена')
+        setShowAddModal(false)
         refresh()
       } catch {
         addNotification('error', 'Ошибка при добавлении записи')
@@ -118,9 +152,9 @@ export default function WhiteIpRecordsPage() {
 
   const isRecordExcluded = useCallback(
     (record: WhiteIpRecord) => {
-      return !!(excludedIds.has(record.id) || (record.note_out && record.note_out !== '-' && record.note_out !== ''))
+      return !!(record.note_out && record.note_out !== '-' && record.note_out !== '')
     },
-    [excludedIds]
+    []
   )
 
   return (
@@ -143,6 +177,13 @@ export default function WhiteIpRecordsPage() {
           )}
         </div>
       </div>
+
+      <SourceTabs
+        variant="ip"
+        activeMse={activeMse}
+        onChange={setActiveMse}
+        counts={mseCounts}
+      />
 
       <FilterBar
         columns={WHITE_IP_RECORD_COLUMNS}
@@ -169,7 +210,10 @@ export default function WhiteIpRecordsPage() {
         canEdit={canEdit}
         canDelete={canDelete}
         variant="white-ip"
+        activeMses={activeMse !== null ? [activeMse] : undefined}
         emptyMessage="White IP записи не найдены"
+        filters={pagination.filters}
+        onFilterChange={pagination.setFilter}
       />
 
       <Pagination
@@ -187,6 +231,8 @@ export default function WhiteIpRecordsPage() {
         onSave={handleAddRecord}
         columns={WHITE_IP_RECORD_COLUMNS}
         title="White IP запись"
+        currentUser={user?.full_name || user?.username || ''}
+        variant="white-ip"
       />
 
       {exceptionRecord && (
@@ -194,7 +240,9 @@ export default function WhiteIpRecordsPage() {
           isOpen={!!exceptionRecord}
           onClose={() => setExceptionRecord(null)}
           onSave={handleSaveException}
-          recordLabel={`White IP #${exceptionRecord.id}`}
+          record={exceptionRecord}
+          currentUser={user?.full_name || user?.username || ''}
+          variant="white-ip"
         />
       )}
     </div>

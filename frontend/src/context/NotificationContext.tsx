@@ -13,7 +13,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
 
   const addNotification = useCallback((type: Notification['type'], message: string) => {
-    const id = crypto.randomUUID()
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
     setNotifications((prev) => [...prev, { id, type, message }])
 
     // Авто-удаление через 5 секунд
