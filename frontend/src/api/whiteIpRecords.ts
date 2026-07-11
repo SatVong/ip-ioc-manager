@@ -26,3 +26,8 @@ export async function updateWhiteIpRecord(id: number, data: Partial<WhiteIpRecor
 export async function deleteWhiteIpRecord(id: number): Promise<void> {
   await api.delete(`/white-ip-records/${id}`)
 }
+
+export async function getWhiteIpRecordsMseCounts(): Promise<Record<number, number>> {
+  const response = await api.get<Record<number, number>>('/white-ip-records/mse-counts')
+  return response.data
+}

@@ -81,7 +81,7 @@ export default function TableRow<T extends { id: number }>({
     }
 
     if (col.type === 'readonly') {
-      return <span className="text-sm">{formatDate(value as string)}</span>
+      return <span className="text-sm">{String(value ?? '—')}</span>
     }
 
     if (col.type === 'encoding') {
@@ -115,8 +115,8 @@ export default function TableRow<T extends { id: number }>({
 
     // Обычный текст
     return (
-      <span className="text-sm" title={value as string}>
-        {truncate(String(value ?? ''), 40) || '—'}
+      <span className="text-sm block truncate" title={value as string}>
+        {truncate(String(value ?? ''), 16) || '—'}
       </span>
     )
   }
@@ -135,8 +135,8 @@ export default function TableRow<T extends { id: number }>({
       {columns.map((col) => (
         <td
           key={col.key as string}
-          className="px-3 py-2 whitespace-nowrap"
-          style={{ maxWidth: col.width }}
+          className="px-3 py-2 whitespace-nowrap overflow-hidden"
+          style={{ width: col.width, maxWidth: col.width }}
           onDoubleClick={(e) => {
             e.stopPropagation()
             if (canEdit && col.type !== 'mse' && col.type !== 'readonly') {

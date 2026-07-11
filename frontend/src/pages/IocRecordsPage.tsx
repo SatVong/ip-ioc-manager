@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import DataTable from '../components/table/DataTable'
 import FilterBar from '../components/filters/FilterBar'
 import SourceTabs from '../components/filters/SourceTabs'
@@ -12,7 +12,7 @@ import { useRecords } from '../hooks/useRecords'
 import { usePermissions } from '../hooks/usePermissions'
 import { useNotification } from '../hooks/useNotification'
 import { useAuth } from '../hooks/useAuth'
-import { IOC_RECORD_COLUMNS } from '../utils/constants'
+import { IOC_RECORD_COLUMNS, IOC_FILTER_KEY_MAP } from '../utils/constants'
 import * as iocRecordsApi from '../api/iocRecords'
 import type { IocRecord } from '../types'
 
@@ -24,6 +24,22 @@ export default function IocRecordsPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [exceptionRecord, setExceptionRecord] = useState<IocRecord | null>(null)
   const [activeMse, setActiveMse] = useState<number | null>(null)
+  const [mseCounts, setMseCounts] = useState<Record<number, number>>({})
+  const [mseRefreshCounter, setMseRefreshCounter] = useState(0)
+
+  // Загружаем количество записей для каждого MSE из БД (со всего сервера)
+  const loadMseCounts = useCallback(async () => {
+    try {
+      const counts = await iocRecordsApi.getIocRecordsMseCounts()
+      setMseCounts(counts)
+    } catch {
+      // Ошибка не критична
+    }
+  }, [])
+
+  useEffect(() => {
+    loadMseCounts()
+  }, [loadMseCounts, mseRefreshCounter])
 
   const extraParams = useMemo(() => {
     const params: Record<string, unknown> = {}
@@ -44,19 +60,8 @@ export default function IocRecordsPage() {
     fetchFn: fetchRecords,
     pagination,
     errorMessage: 'Ошибка загрузки IOC записей',
+    filterKeyMap: IOC_FILTER_KEY_MAP,
   })
-
-  const mseCounts = useMemo(() => {
-    const counts: Record<number, number> = {}
-    for (const record of data) {
-      if (record.mses && Array.isArray(record.mses)) {
-        for (const m of record.mses) {
-          counts[m] = (counts[m] || 0) + 1
-        }
-      }
-    }
-    return counts
-  }, [data])
 
   const handleToggleMse = useCallback(
     async (record: IocRecord, mse: number) => {
@@ -68,6 +73,7 @@ export default function IocRecordsPage() {
         await iocRecordsApi.updateIocRecord(record.id, { mses: newMses } as Partial<IocRecord>)
         addNotification('success', `МСЭ ${mse} ${currentMses.includes(mse) ? 'убран' : 'добавлен'}`)
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при изменении МСЭ')
       }
@@ -81,6 +87,7 @@ export default function IocRecordsPage() {
         await iocRecordsApi.updateIocRecord(record.id, { [key]: value } as Partial<IocRecord>)
         addNotification('success', 'Запись обновлена')
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при обновлении записи')
       }
@@ -95,6 +102,7 @@ export default function IocRecordsPage() {
         await iocRecordsApi.deleteIocRecord(record.id)
         addNotification('success', 'Запись удалена')
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при удалении записи')
       }
@@ -114,6 +122,7 @@ export default function IocRecordsPage() {
         addNotification('success', 'Исключение сохранено')
         setExceptionRecord(null)
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при сохранении исключения')
       }
@@ -128,6 +137,7 @@ export default function IocRecordsPage() {
         addNotification('success', 'Запись добавлена')
         setShowAddModal(false)
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при добавлении записи')
       }
@@ -143,6 +153,7 @@ export default function IocRecordsPage() {
         }
         addNotification('success', `Импортировано ${records.length} записей`)
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при импорте CSV')
       }
@@ -186,10 +197,8 @@ export default function IocRecordsPage() {
       />
 
       <FilterBar
-        columns={IOC_RECORD_COLUMNS}
         filters={pagination.filters}
         globalSearch={pagination.globalSearch}
-        onFilterChange={pagination.setFilter}
         onGlobalSearchChange={pagination.setGlobalSearch}
         onClearFilters={pagination.clearFilters}
         total={total}

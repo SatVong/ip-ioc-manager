@@ -2,16 +2,18 @@
 
 export function formatDate(dateStr: string): string {
   if (!dateStr || dateStr === '-' || dateStr === '') return '-'
-  // Если дата в формате DD.MM.YYYY — возвращаем как есть
+  // Если дата в формате DD.MM.YYYY (с временем или без) — возвращаем как есть
   if (/^\d{2}\.\d{2}\.\d{4}/.test(dateStr)) return dateStr
   // Если ISO — конвертируем
   try {
     const d = new Date(dateStr)
     if (isNaN(d.getTime())) return dateStr
-    return d.toLocaleDateString('ru-RU', {
+    return d.toLocaleString('ru-RU', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     })
   } catch {
     return dateStr

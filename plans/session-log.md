@@ -389,4 +389,86 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
 
 ---
 
-*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: Этап 8 — Docker + финальный деплой)*
+## 7. ЖУРНАЛ ИСПРАВЛЕНИЙ (FIX)
+
+### FIX 1-19 (Round 1-2) — Исправления после деплоя
+- **FIX 1**: `crypto.randomUUID()` → `Date.now().toString(36) + Math.random().toString(36).slice(2, 10)` (NotificationContext)
+- **FIX 2**: SourceTabs — группировка по Организация №1 (1-11 IP, 1-3 IOC) и Организация №2 (12-15 IP, 4-6 IOC)
+- **FIX 3**: MseBadges — toggle-режим с активными квадратиками
+- **FIX 4**: ExceptionModal — полный редизайн (note_out textarea, date_out/who_out read-only, кнопка очистки)
+- **FIX 5**: AddRecordModal — левая/правая колонки, правильный порядок полей
+- **FIX 6**: UsersPage — поля full_name, email, is_active, can_* permissions
+- **FIX 7**: ProfilePage — права доступа для admin
+- **FIX 8**: CSV экспорт — разделитель `;` (точка с запятой)
+- **FIX 9**: clearWhiteIpRecords — исправлен endpoint
+- **FIX 10**: FilterBar — filterable колонки вынесены в TableHeader
+- **FIX 11**: TypeScript build — исправлены ошибки
+- **FIX 12**: SourceTabs — исправлен лейаут (скролл, отступы)
+- **FIX 13**: FilterBar — перенесён в шапку таблицы, индивидуальные кнопки сброса
+- **FIX 14**: GlobalSearch — debounce 400ms, расширенные колонки поиска
+- **FIX 15**: Backend inline editing — merge через `??` (частичное обновление)
+- **FIX 16**: AddRecordModal — словарь стран, real-time валидация, правильный порядок полей, авто date_in/who_in
+- **FIX 17**: "IP-адресс" → "IP-адрес" (исправление опечатки везде)
+
+### FIX 18-30 (Round 3) — Исправления после тестирования
+- **FIX 18**: Rate limiter 429 — `authMax` увеличен с 10 до 20
+- **FIX 19**: Column filters single-char — выделен `FilterInput` с локальным состоянием + debounce 400ms
+- **FIX 20**: Missing column filters — `filterable: true` добавлен всем колонкам, убрано ограничение по типу
+- **FIX 21**: AddRecordModal порядок полей — note_in, date_in*, who_in
+- **FIX 22**: note_in как textarea — `rows={3}`, `maxLength={128}`
+- **FIX 23**: Date auto-fill — поле `date` автозаполняется текущей датой
+- **FIX 24**: Required field highlighting — `*` у обязательных полей
+- **FIX 25**: Inline validation — ip/date/country в EditableCell
+- **FIX 26**: Enter scroll — `e.preventDefault()` в EditableCell
+- **FIX 27**: mse_method — тип изменён на `readonly`
+- **FIX 28**: note_out — тип изменён на `readonly`
+- **FIX 29**: FilterInput debounce — исправлен useEffect (local !== value)
+- **FIX 30**: date_in hint — обновлён
+
+### FIX 31-39 (Round 4, часть 1) — Исправления после тестирования
+- **FIX 31**: Column filters — `useRef` для стабилизации `onChange` в FilterInput
+- **FIX 32**: mse_method — readonly рендеринг исправлен (сырое значение вместо formatDate)
+- **FIX 33**: Page position jumps — scroll preservation в useRecords (save/restore через ref)
+- **FIX 34**: Page position jumps — то же исправление (покрывает edit/delete/mse toggle)
+- **FIX 35**: AddRecordModal — добавлены date_out/who_out поля
+- **FIX 36**: note_in textarea — `rows={3}` → `rows={6}`
+- **FIX 37**: Truncate — 40 → 16 символов, `block truncate` CSS
+- **FIX 38**: Fixed table widths — `table-layout: fixed`, `width` вместо `maxWidth`, `overflow-hidden`
+- **FIX 39**: date_in формат — `getCurrentDateTime()` (ДД.ММ.ГГГГ ЧЧ:ММ), валидация даты с временем
+
+### FIX 40-47 (Round 4, часть 2) — Исправления после тестирования
+- **FIX 40**: Rate limiter — `authMax` 20 → 200, Retry-After таймер в уведомлении (client.ts + LoginPage)
+- **FIX 41**: Column filters — `FilterInput` переписан: `colKey` + `onFilterChange` как отдельные props через refs; `DataTable` переписан: `TableHeader` всегда виден, спиннер только в `<tbody>`
+- **FIX 42**: mse_method — тип `readonly` → `cidr`, валидация `xxx.xxx.xxx.xxx/xx` или `-`
+- **FIX 43**: date_out/who_out — убраны из авто-заполнения AddRecordModal (только при исключении)
+- **FIX 44**: IOC indicator — валидация hex в EditableCell (тип `hash`)
+- **FIX 45**: Auto-detect encoding — по длине хеша (MD5=32, SHA1=40, SHA256=64) на бэке и фронте
+- **FIX 46**: ExceptionModal — исправлен raw JSX в label (строка → React-элемент)
+- **FIX 47**: date_out/who_out — убраны из модалок добавления записей
+
+### FIX 48-53 (Round 5) — Исправления после тестирования
+- **FIX 48**: `useRecords` — переписан механизм загрузки: стабильная `load()` через `paginationRef`, отслеживание изменений через сериализованную строку `currentParamsKey`. Решена проблема бесконечного ре-рендера из-за нового объекта `pagination.filters` при каждом рендере. Теперь `load()` вызывается только при реальном изменении параметров (page, limit, sortBy, sortOrder, filters, globalSearch)
+- **FIX 49**: Column filters — исправлены через FIX 48 (теперь `setFilter` корректно триггерит `load()` без лишних ре-рендеров)
+- **FIX 50**: SourceTabs counts — добавлены бэкенд-endpoint'ы `GET /api/records/mse-counts`, `GET /api/ioc-records/mse-counts`, `GET /api/white-ip-records/mse-counts`. Фронтенд загружает counts со всего сервера (не только с текущей страницы). Добавлен `mseRefreshCounter` для обновления counts после мутаций (add/edit/delete/toggleMse)
+- **FIX 51**: Scroll preservation — исправлен через FIX 48 (теперь `load()` вызывается только при изменении параметров, scroll не сбрасывается на каждом ре-рендере)
+- **FIX 52**: Scroll preservation — то же, что FIX 51 (покрывает пагинацию)
+- **FIX 53**: Scroll preservation — то же, что FIX 51 (покрывает inline edit)
+- **FIX 54**: AddRecordModal — удалены `FIELD_HINTS` для `date_out`/`who_out`, удалена валидация `date_out` из `validateField`
+- **FIX 55**: Backend `mse` filter — добавлена обработка query-параметра `mse` в `getRecordsPaginated`, `getIocRecordsPaginated`, `getWhiteIpRecordsPaginated` (добавляется в `filters` как `'Где внесено'`)
+
+### FIX 56-62 (Round 6) — Финальные исправления после тестирования
+- **FIX 56**: `useRecords` — ПОЛНОСТЬЮ ПЕРЕПИСАН. Убран `paginationRef`/`currentParamsKey` подход (ломавший SourceTabs). Новая версия: стабильная `load()` через refs (`fetchFnRef`, `addNotificationRef`, `errorMessageRef`), `useEffect` с правильными зависимостями: `[pagination.page, pagination.limit, pagination.sortBy, pagination.sortOrder, JSON.stringify(pagination.filters), pagination.globalSearch, fetchFn]`. `fetchFn` включён в зависимости — это чинит SourceTabs, т.к. при изменении `activeMse` → `extraParams` → `fetchFn` → `load()` вызывается. Scroll preservation через отдельный `useEffect` на `loading`.
+- **FIX 57**: Column filters — добавлен `filterKeyMap` в `useRecords`. `IP_FILTER_KEY_MAP`, `IOC_FILTER_KEY_MAP`, `WHITE_IP_FILTER_KEY_MAP` в `constants.ts` мапят английские ключи колонок (`ip`, `country`, `date` и т.д.) в русские (`IP-адрес`, `Страна`, `Дата получения`), которые ожидает бэкенд в `columnMap`. Без этого маппинга бэкенд не находил колонку и игнорировал фильтр.
+- **FIX 58**: SourceTabs — починены через FIX 56. `fetchFn` теперь в зависимостях `useEffect`, поэтому при клике на вкладку (`activeMse` меняется → `extraParams` меняется → `fetchRecords` пересоздаётся) `load()` вызывается с новыми параметрами.
+- **FIX 59**: AddRecordModal — проверено: `IP_RIGHT_FIELDS = ['note_in', 'date_in', 'who_in']`, `date_out`/`who_out` отсутствуют. `date_in`/`who_in` присутствуют и авто-заполняются. Всё корректно.
+- **FIX 60**: Rate limiter — `authMax` увеличен с 200 до 2000 (20 человек × 100 попыток). Убран Retry-After таймер из `client.ts` (теперь просто "Слишком много запросов, попробуйте позже" без вычисления минут). Упрощён `LoginPage.tsx` — убран `_rateLimitMessage`, показывается простое сообщение.
+- **FIX 61**: Scroll preservation — починен через FIX 56. Стабильная `load()` + правильные зависимости `useEffect` гарантируют, что `load()` вызывается только при реальном изменении параметров. Scroll сохраняется через `scrollPosRef` и восстанавливается через `requestAnimationFrame` после `loading = false`.
+
+### FIX 63-65 (Round 7) — Исправления после повторного тестирования
+- **FIX 63**: Rate limiter — общий `max` увеличен с 100 до 2000 запросов за 15 минут. Ранее был увеличен только `authMax` (для `/api/auth/login`), но общий лимит в 100 запросов быстро исчерпывался при активном тестировании (редактирование ячеек = PUT, загрузка страниц = GET).
+- **FIX 64**: `useRecords` — исправлен критический баг: стабильная `load()` (пустые зависимости `[]`) читала `pagination.page`, `pagination.limit`, `pagination.filters`, `pagination.globalSearch` и `filterKeyMap` **напрямую из замыкания первого рендера**. Когда параметры менялись, `useEffect` вызывал `load()`, но она использовала старые значения. **Решение**: добавлен `paginationRef` (обновляется каждый рендер) и `filterKeyMapRef`. `load()` читает всё через refs, поэтому всегда использует актуальные значения.
+- **FIX 65**: AddRecordModal — `editableColumns` фильтровал `col.type !== 'readonly'`, из-за чего `date_in`/`who_in` (тип `readonly`) не отображались в модалке. **Решение**: убран фильтр `type !== 'readonly'`. Read-only поля теперь отображаются как заблокированные (серый фон, `readOnly={true}`), что уже было реализовано в `renderField` через `isAutoField`.
+
+---
+
+*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-11T19:20 UTC+3 — Round 7: FIX 63-65)*

@@ -36,3 +36,8 @@ export async function updateIocRecord(id: number, data: Partial<IocRecord>): Pro
 export async function deleteIocRecord(id: number): Promise<void> {
   await api.delete(`/ioc-records/${id}`)
 }
+
+export async function getIocRecordsMseCounts(): Promise<Record<number, number>> {
+  const response = await api.get<Record<number, number>>('/ioc-records/mse-counts')
+  return response.data
+}

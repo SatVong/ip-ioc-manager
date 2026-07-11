@@ -36,3 +36,8 @@ export async function updateRecord(id: number, data: Partial<IpRecord>): Promise
 export async function deleteRecord(id: number): Promise<void> {
   await api.delete(`/records/${id}`)
 }
+
+export async function getRecordsMseCounts(): Promise<Record<number, number>> {
+  const response = await api.get<Record<number, number>>('/records/mse-counts')
+  return response.data
+}

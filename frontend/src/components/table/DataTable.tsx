@@ -46,27 +46,9 @@ export default function DataTable<T extends { id: number }>({
   filters,
   onFilterChange,
 }: DataTableProps<T>) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: 'var(--color-primary)' }} />
-      </div>
-    )
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          {emptyMessage}
-        </p>
-      </div>
-    )
-  }
-
   return (
     <div className="overflow-x-auto rounded-xl border" style={{ borderColor: 'var(--color-border)' }}>
-      <table className="w-full">
+      <table className="w-full" style={{ tableLayout: 'fixed' }}>
         <TableHeader
           columns={columns}
           sortBy={sortBy}
@@ -76,22 +58,38 @@ export default function DataTable<T extends { id: number }>({
           onFilterChange={onFilterChange}
         />
         <tbody>
-          {data.map((record) => (
-            <TableRow
-              key={record.id}
-              record={record}
-              columns={columns}
-              isExcluded={isRecordExcluded(record)}
-              onToggleMse={onToggleMse}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onOpenException={onOpenException}
-              canEdit={canEdit}
-              canDelete={canDelete}
-              variant={variant}
-              activeMses={activeMses}
-            />
-          ))}
+          {loading ? (
+            <tr>
+              <td colSpan={columns.length + 1} className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: 'var(--color-primary)' }} />
+              </td>
+            </tr>
+          ) : data.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length + 1} className="text-center py-12">
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  {emptyMessage}
+                </p>
+              </td>
+            </tr>
+          ) : (
+            data.map((record) => (
+              <TableRow
+                key={record.id}
+                record={record}
+                columns={columns}
+                isExcluded={isRecordExcluded(record)}
+                onToggleMse={onToggleMse}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onOpenException={onOpenException}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                variant={variant}
+                activeMses={activeMses}
+              />
+            ))
+          )}
         </tbody>
       </table>
     </div>

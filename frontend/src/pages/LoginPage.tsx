@@ -25,8 +25,12 @@ export default function LoginPage() {
     try {
       await login({ username, password })
       addNotification('success', 'Вход выполнен успешно')
-    } catch {
-      addNotification('error', 'Неверное имя пользователя или пароль')
+    } catch (err: any) {
+      if (err.response?.status === 429) {
+        addNotification('error', 'Слишком много попыток входа, повторите позже')
+      } else {
+        addNotification('error', 'Неверное имя пользователя или пароль')
+      }
     } finally {
       setLoading(false)
     }

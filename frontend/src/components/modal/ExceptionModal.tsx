@@ -64,7 +64,7 @@ export default function ExceptionModal({ isOpen, onClose, onSave, record, curren
         {/* Причина исключения */}
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-            Причина исключения {!isEdit && '<span className="text-red-500">*</span>'}
+            Причина исключения {!isEdit && <span className="text-red-500"> *</span>}
           </label>
           <textarea
             value={noteOut}

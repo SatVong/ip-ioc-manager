@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import DataTable from '../components/table/DataTable'
 import FilterBar from '../components/filters/FilterBar'
 import SourceTabs from '../components/filters/SourceTabs'
@@ -12,7 +12,7 @@ import { useRecords } from '../hooks/useRecords'
 import { usePermissions } from '../hooks/usePermissions'
 import { useNotification } from '../hooks/useNotification'
 import { useAuth } from '../hooks/useAuth'
-import { IP_RECORD_COLUMNS } from '../utils/constants'
+import { IP_RECORD_COLUMNS, IP_FILTER_KEY_MAP } from '../utils/constants'
 import * as recordsApi from '../api/records'
 import type { IpRecord } from '../types'
 
@@ -24,6 +24,22 @@ export default function IpRecordsPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [exceptionRecord, setExceptionRecord] = useState<IpRecord | null>(null)
   const [activeMse, setActiveMse] = useState<number | null>(null)
+  const [mseCounts, setMseCounts] = useState<Record<number, number>>({})
+  const [mseRefreshCounter, setMseRefreshCounter] = useState(0)
+
+  // Загружаем количество записей для каждого MSE из БД (со всего сервера, не только с текущей страницы)
+  const loadMseCounts = useCallback(async () => {
+    try {
+      const counts = await recordsApi.getRecordsMseCounts()
+      setMseCounts(counts)
+    } catch {
+      // Ошибка не критична — просто не покажем counts
+    }
+  }, [])
+
+  useEffect(() => {
+    loadMseCounts()
+  }, [loadMseCounts, mseRefreshCounter])
 
   // Фильтр по mse добавляем к запросу
   const extraParams = useMemo(() => {
@@ -45,20 +61,8 @@ export default function IpRecordsPage() {
     fetchFn: fetchRecords,
     pagination,
     errorMessage: 'Ошибка загрузки IP записей',
+    filterKeyMap: IP_FILTER_KEY_MAP,
   })
-
-  // Подсчёт количества записей для каждого mse
-  const mseCounts = useMemo(() => {
-    const counts: Record<number, number> = {}
-    for (const record of data) {
-      if (record.mses && Array.isArray(record.mses)) {
-        for (const m of record.mses) {
-          counts[m] = (counts[m] || 0) + 1
-        }
-      }
-    }
-    return counts
-  }, [data])
 
   const handleToggleMse = useCallback(
     async (record: IpRecord, mse: number) => {
@@ -70,6 +74,7 @@ export default function IpRecordsPage() {
         await recordsApi.updateRecord(record.id, { mses: newMses } as Partial<IpRecord>)
         addNotification('success', `МСЭ ${mse} ${currentMses.includes(mse) ? 'убран' : 'добавлен'}`)
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при изменении МСЭ')
       }
@@ -83,6 +88,7 @@ export default function IpRecordsPage() {
         await recordsApi.updateRecord(record.id, { [key]: value } as Partial<IpRecord>)
         addNotification('success', 'Запись обновлена')
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при обновлении записи')
       }
@@ -97,6 +103,7 @@ export default function IpRecordsPage() {
         await recordsApi.deleteRecord(record.id)
         addNotification('success', 'Запись удалена')
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при удалении записи')
       }
@@ -116,6 +123,7 @@ export default function IpRecordsPage() {
         addNotification('success', 'Исключение сохранено')
         setExceptionRecord(null)
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при сохранении исключения')
       }
@@ -130,6 +138,7 @@ export default function IpRecordsPage() {
         addNotification('success', 'Запись добавлена')
         setShowAddModal(false)
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при добавлении записи')
       }
@@ -145,6 +154,7 @@ export default function IpRecordsPage() {
         }
         addNotification('success', `Импортировано ${records.length} записей`)
         refresh()
+        setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при импорте CSV')
       }
@@ -188,10 +198,8 @@ export default function IpRecordsPage() {
       />
 
       <FilterBar
-        columns={IP_RECORD_COLUMNS}
         filters={pagination.filters}
         globalSearch={pagination.globalSearch}
-        onFilterChange={pagination.setFilter}
         onGlobalSearchChange={pagination.setGlobalSearch}
         onClearFilters={pagination.clearFilters}
         total={total}

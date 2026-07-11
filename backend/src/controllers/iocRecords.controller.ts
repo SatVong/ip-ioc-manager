@@ -4,6 +4,25 @@ import { getPaginatedData } from '../services/pagination.service';
 import { IocRecord, CreateIocRecordRequest } from '../types/record';
 import { PaginationQuery } from '../types/pagination';
 
+// Получить количество записей для каждого MSE
+export async function getMseCounts(req: Request, res: Response): Promise<void> {
+  try {
+    const result = await pool.query('SELECT mses FROM ioc_records');
+    const counts: Record<number, number> = {};
+    for (const row of result.rows) {
+      if (row.mses && Array.isArray(row.mses)) {
+        for (const m of row.mses) {
+          counts[m] = (counts[m] || 0) + 1;
+        }
+      }
+    }
+    res.json(counts);
+  } catch (err) {
+    console.error((err as Error).message);
+    res.status(500).json({ error: 'Ошибка при получении статистики MSE' });
+  }
+}
+
 const IOC_COLUMN_MAP: Record<string, string> = {
   'id': 'id',
   'Где внесено': 'mses',
@@ -36,12 +55,17 @@ export async function getAllIocRecords(req: Request, res: Response): Promise<voi
 
 export async function getIocRecordsPaginated(req: Request, res: Response): Promise<void> {
   try {
+    const filters: Record<string, string> = req.query.filters ? JSON.parse(req.query.filters as string) : {};
+    // Добавляем фильтр по mse, если передан как отдельный параметр
+    if (req.query.mse) {
+      filters['Где внесено'] = req.query.mse as string;
+    }
     const query: PaginationQuery = {
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 10,
       sortBy: (req.query.sortBy as string) || 'id',
       sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
-      filters: req.query.filters ? JSON.parse(req.query.filters as string) : {},
+      filters,
       globalSearch: (req.query.globalSearch as string) || '',
     };
 
@@ -76,14 +100,23 @@ export async function createIocRecord(req: Request, res: Response): Promise<void
   try {
     const data = req.body as CreateIocRecordRequest;
 
+    // Auto-detect encoding from indicator if not provided
+    let encoding = data.encoding;
+    if (!encoding && data.indicator) {
+      const detected = detectEncoding(data.indicator);
+      if (detected) {
+        encoding = detected;
+      }
+    }
+
     const result = await pool.query(
-      `INSERT INTO ioc_records 
+      `INSERT INTO ioc_records
        (mses, date, from_source, letter, indicator, encoding,
         status_opentip, status_virustotal, note_in, date_in,
-        who_in, note_out, date_out, who_out) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+        who_in, note_out, date_out, who_out)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
-      [data.mses, data.date, data.from_source, data.letter, data.indicator, data.encoding,
+      [data.mses, data.date, data.from_source, data.letter, data.indicator, encoding,
        data.status_opentip, data.status_virustotal, data.note_in, data.date_in,
        data.who_in, data.note_out, data.date_out, data.who_out]
     );
@@ -93,6 +126,17 @@ export async function createIocRecord(req: Request, res: Response): Promise<void
     console.error((err as Error).message);
     res.status(500).json({ error: 'Ошибка при создании IOC записи' });
   }
+}
+
+// Определение кодировки по длине хеша
+function detectEncoding(hash: string): string | null {
+  const trimmed = (hash || '').trim();
+  if (!/^[0-9a-fA-F]+$/.test(trimmed)) return null;
+  const len = trimmed.length;
+  if (len === 32) return 'md5';
+  if (len === 40) return 'sha1';
+  if (len === 64) return 'sha256';
+  return null;
 }
 
 export async function updateIocRecord(req: Request, res: Response): Promise<void> {
@@ -109,13 +153,23 @@ export async function updateIocRecord(req: Request, res: Response): Promise<void
 
     const existingRecord = existing.rows[0];
     // Merge: only update fields that were sent
+    const indicator = data.indicator ?? existingRecord.indicator;
+    // Auto-detect encoding when indicator changes
+    let encoding = data.encoding ?? existingRecord.encoding;
+    if (data.indicator !== undefined) {
+      const detected = detectEncoding(indicator as string);
+      if (detected) {
+        encoding = detected;
+      }
+    }
+
     const merged = {
       mses: data.mses ?? existingRecord.mses,
       date: data.date ?? existingRecord.date,
       from_source: data.from_source ?? existingRecord.from_source,
       letter: data.letter ?? existingRecord.letter,
-      indicator: data.indicator ?? existingRecord.indicator,
-      encoding: data.encoding ?? existingRecord.encoding,
+      indicator,
+      encoding,
       status_opentip: data.status_opentip ?? existingRecord.status_opentip,
       status_virustotal: data.status_virustotal ?? existingRecord.status_virustotal,
       note_in: data.note_in ?? existingRecord.note_in,

@@ -37,7 +37,7 @@ const VALID_COUNTRIES = [
 
 // Подсказки для полей
 const FIELD_HINTS: Record<string, string> = {
-  date: 'Формат: ДД.ММ.ГГГГ, время добавится автоматически',
+  date: 'Формат: ДД.ММ.ГГГГ',
   from_source: 'Максимум 64 символа',
   letter: 'Максимум 24 символа',
   domain: 'Максимум 64 символа',
@@ -45,7 +45,7 @@ const FIELD_HINTS: Record<string, string> = {
   country: 'Две заглавные буквы (если страна не известна то пиши XX)',
   owner: 'Максимум 64 символа',
   note_in: 'Максимум 128 символов',
-  date_in: 'Заполняется автоматически',
+  date_in: 'Формат: ДД.ММ.ГГГГ ЧЧ:ММ, заполняется автоматически',
   who_in: 'Заполняется автоматически',
   indicator: 'Кодировка определяется автоматически по длине хеша',
 }
@@ -88,32 +88,59 @@ function isValidIP(ip: string): boolean {
   })
 }
 
+// Валидация CIDR: xxx.xxx.xxx.xxx/xx или "-"
+function isValidCIDR(value: string): boolean {
+  const trimmed = value.trim()
+  if (trimmed === '-') return true
+  const cidrRegex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/
+  const match = trimmed.match(cidrRegex)
+  if (!match) return false
+  for (let i = 1; i <= 4; i++) {
+    const num = parseInt(match[i], 10)
+    if (num < 0 || num > 255) return false
+  }
+  const prefix = parseInt(match[5], 10)
+  if (prefix < 0 || prefix > 32) return false
+  return true
+}
+
 // Валидация страны (2 заглавные буквы из словаря)
 function isValidCountry(country: string): boolean {
   return VALID_COUNTRIES.includes(country.toUpperCase())
 }
 
-// Валидация даты в формате ДД.ММ.ГГГГ
+// Валидация даты в формате ДД.ММ.ГГГГ или ДД.ММ.ГГГГ ЧЧ:ММ
 function isValidDate(dateStr: string): boolean {
   if (!dateStr) return false
   const trimmed = dateStr.trim()
-  // Проверка формата ДД.ММ.ГГГГ
-  const match = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})$/)
+  // Сначала пробуем с временем
+  let match = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})$/)
+  if (match) {
+    const day = parseInt(match[1], 10)
+    const month = parseInt(match[2], 10)
+    const year = parseInt(match[3], 10)
+    const hours = parseInt(match[4], 10)
+    const minutes = parseInt(match[5], 10)
+    if (month < 1 || month > 12) return false
+    if (day < 1 || day > 31) return false
+    if (year < 1900 || year > 2100) return false
+    if (hours < 0 || hours > 23) return false
+    if (minutes < 0 || minutes > 59) return false
+    const daysInMonth = new Date(year, month, 0).getDate()
+    if (day > daysInMonth) return false
+    return true
+  }
+  // Пробуем без времени
+  match = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})$/)
   if (!match) return false
-
   const day = parseInt(match[1], 10)
   const month = parseInt(match[2], 10)
   const year = parseInt(match[3], 10)
-
-  // Проверка диапазонов
   if (month < 1 || month > 12) return false
   if (day < 1 || day > 31) return false
   if (year < 1900 || year > 2100) return false
-
-  // Проверка количества дней в месяце
   const daysInMonth = new Date(year, month, 0).getDate()
   if (day > daysInMonth) return false
-
   return true
 }
 
@@ -131,6 +158,24 @@ function getCurrentDate(): string {
   return `${day}.${month}.${year}`
 }
 
+// Получить текущую дату и время в формате ДД.ММ.ГГГГ ЧЧ:ММ
+function getCurrentDateTime(): string {
+  const now = new Date()
+  const day = String(now.getDate()).padStart(2, '0')
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const year = now.getFullYear()
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  return `${day}.${month}.${year} ${hours}:${minutes}`
+}
+
+// Обязательные поля для IP записей
+const IP_REQUIRED_FIELDS = ['date', 'from_source', 'ip', 'note_in']
+// Обязательные поля для IOC записей
+const IOC_REQUIRED_FIELDS = ['date', 'from_source', 'indicator', 'note_in']
+// Обязательные поля для White IP записей
+const WHITE_IP_REQUIRED_FIELDS = ['date', 'from_source', 'ip', 'note_in']
+
 export default function AddRecordModal({ isOpen, onClose, onSave, columns, title, currentUser = '', variant = 'ip' }: AddRecordModalProps) {
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -139,7 +184,8 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
   useEffect(() => {
     if (isOpen) {
       const initial: Record<string, string> = {
-        date_in: getCurrentDate(),
+        date: getCurrentDate(),
+        date_in: getCurrentDateTime(),
         who_in: currentUser,
       }
       setFormData(initial)
@@ -147,8 +193,9 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
     }
   }, [isOpen, currentUser])
 
+  // Показываем все поля, кроме mses. Read-only поля (date_in/who_in) отображаем как заблокированные
   const editableColumns = columns.filter(
-    (col) => col.type !== 'readonly' && col.key !== 'mses'
+    (col) => col.key !== 'mses'
   )
 
   // Определяем набор полей в зависимости от variant
@@ -168,16 +215,25 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
     }
   }
 
+  const getRequiredFields = (): string[] => {
+    switch (variant) {
+      case 'ioc': return IOC_REQUIRED_FIELDS
+      case 'white-ip': return WHITE_IP_REQUIRED_FIELDS
+      default: return IP_REQUIRED_FIELDS
+    }
+  }
+
   // Валидация одного поля
   const validateField = (key: string, value: string): string => {
     const col = columns.find((c) => c.key === key)
     if (!col) return ''
 
     const trimmed = value.trim()
+    const requiredFields = getRequiredFields()
 
-    // Проверка обязательных полей (с * в label)
-    if (col.label.includes('*') && !trimmed) {
-      return 'Поле обязательно'
+    // Проверка обязательных полей
+    if (requiredFields.includes(key) && !trimmed) {
+      return 'Поле обязательно для заполнения'
     }
 
     if (!trimmed) return ''
@@ -189,6 +245,13 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
       }
     }
 
+    // Валидация CIDR
+    if (col.type === 'cidr') {
+      if (!isValidCIDR(trimmed)) {
+        return 'Неверный формат. Используйте xxx.xxx.xxx.xxx/xx или "-"'
+      }
+    }
+
     // Валидация страны
     if (key === 'country') {
       if (!isValidCountry(trimmed.toUpperCase())) {
@@ -196,10 +259,10 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
       }
     }
 
-    // Валидация даты (для полей date и date_in)
+    // Валидация даты
     if (col.type === 'date' || key === 'date' || key === 'date_in') {
-      if (key !== 'date_in' && !isValidDate(trimmed)) {
-        return 'Неверный формат даты. Используйте ДД.ММ.ГГГГ'
+      if (!isValidDate(trimmed)) {
+        return 'Неверный формат даты. Используйте ДД.ММ.ГГГГ или ДД.ММ.ГГГГ ЧЧ:ММ'
       }
     }
 
@@ -247,10 +310,30 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
     return Object.keys(newErrors).length === 0
   }
 
+  // Определение кодировки по длине хеша
+  const detectEncoding = (hash: string): string => {
+    const trimmed = hash.trim()
+    if (!/^[0-9a-fA-F]+$/.test(trimmed)) return ''
+    const len = trimmed.length
+    if (len === 32) return 'md5'
+    if (len === 40) return 'sha1'
+    if (len === 64) return 'sha256'
+    return ''
+  }
+
   // Обработчик изменения поля с real-time валидацией
   const handleFieldChange = (key: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [key]: value }))
-    // Real-time валидация
+    setFormData((prev) => {
+      const next = { ...prev, [key]: value }
+      // Авто-определение кодировки при изменении индикатора
+      if (key === 'indicator') {
+        const encoding = detectEncoding(value)
+        if (encoding) {
+          next.encoding = encoding
+        }
+      }
+      return next
+    })
     const error = validateField(key, value)
     setErrors((prev) => {
       const next = { ...prev }
@@ -278,7 +361,7 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
       }
     }
     // Добавляем date_in и who_in если их нет
-    if (!data.date_in) data.date_in = getCurrentDate()
+    if (!data.date_in) data.date_in = getCurrentDateTime()
     if (!data.who_in) data.who_in = currentUser
     onSave(data)
     setFormData({})
@@ -295,10 +378,12 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
   const renderField = (col: ColumnDef<any>) => {
     const key = col.key as string
     const isAutoField = key === 'date_in' || key === 'who_in'
+    const isNoteField = key === 'note_in'
     const hint = FIELD_HINTS[key]
     const placeholder = FIELD_PLACEHOLDERS[key] || col.label
     const error = errors[key]
-    const isRequired = col.label.includes('*')
+    const requiredFields = getRequiredFields()
+    const isRequired = requiredFields.includes(key)
 
     return (
       <div key={key}>
@@ -309,28 +394,44 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
           {col.label}
           {isRequired && <span className="text-red-500"> *</span>}
         </label>
-        <input
-          type="text"
-          value={formData[key] || ''}
-          onChange={(e) => handleFieldChange(key, e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors"
-          style={{
-            backgroundColor: isAutoField ? 'var(--color-card-bg)' : 'var(--color-bg)',
-            borderColor: error ? '#ef4444' : 'var(--color-border)',
-            color: 'var(--color-text)',
-            opacity: isAutoField ? 0.7 : 1,
-          }}
-          placeholder={placeholder}
-          readOnly={isAutoField}
-          maxLength={
-            key === 'from_source' ? 64 :
-            key === 'letter' ? 24 :
-            key === 'domain' ? 64 :
-            key === 'owner' ? 64 :
-            key === 'note_in' ? 128 :
-            undefined
-          }
-        />
+        {isNoteField ? (
+          <textarea
+            value={formData[key] || ''}
+            onChange={(e) => handleFieldChange(key, e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors resize-none"
+            style={{
+              backgroundColor: 'var(--color-bg)',
+              borderColor: error ? '#ef4444' : 'var(--color-border)',
+              color: 'var(--color-text)',
+            }}
+            placeholder={placeholder}
+            rows={6}
+            maxLength={128}
+          />
+        ) : (
+          <input
+            type="text"
+            value={formData[key] || ''}
+            onChange={(e) => handleFieldChange(key, e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors"
+            style={{
+              backgroundColor: isAutoField ? 'var(--color-card-bg)' : 'var(--color-bg)',
+              borderColor: error ? '#ef4444' : 'var(--color-border)',
+              color: 'var(--color-text)',
+              opacity: isAutoField ? 0.7 : 1,
+            }}
+            placeholder={placeholder}
+            readOnly={isAutoField}
+            maxLength={
+              key === 'from_source' ? 64 :
+              key === 'letter' ? 24 :
+              key === 'domain' ? 64 :
+              key === 'owner' ? 64 :
+              key === 'note_in' ? 128 :
+              undefined
+            }
+          />
+        )}
         {hint && (
           <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
             {hint}

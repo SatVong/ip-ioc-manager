@@ -31,7 +31,7 @@ export const DEFAULT_PAGE_SIZE = 10
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 
 // Тип колонки для определения типа редактора/фильтра
-export type ColumnType = 'text' | 'date' | 'ip' | 'country' | 'mse' | 'readonly' | 'hash' | 'encoding' | 'status'
+export type ColumnType = 'text' | 'date' | 'ip' | 'country' | 'mse' | 'readonly' | 'hash' | 'encoding' | 'status' | 'cidr'
 
 export interface ColumnDef<T> {
   /** Отображаемое имя в заголовке */
@@ -55,21 +55,21 @@ export interface ColumnDef<T> {
 // ===== IP Records columns =====
 export const IP_RECORD_COLUMNS: ColumnDef<any>[] = [
   { label: 'Где внесено', key: 'mses', type: 'mse', sortable: true, filterable: true, width: '120px' },
-  { label: 'Дата получения', key: 'date', type: 'date', sortable: true, filterable: true, width: '130px' },
-  { label: 'Откуда получено', key: 'from_source', sortable: true, filterable: true, width: '200px' },
+  { label: 'Дата получения *', key: 'date', type: 'date', sortable: true, filterable: true, width: '130px' },
+  { label: 'Откуда получено *', key: 'from_source', sortable: true, filterable: true, width: '200px' },
   { label: 'Раздел письма', key: 'letter', sortable: true, filterable: true, width: '100px' },
   { label: 'Домен', key: 'domain', sortable: true, filterable: true, width: '180px' },
-  { label: 'IP-адрес', key: 'ip', type: 'ip', sortable: true, filterable: true, width: '150px' },
-  { label: 'Страна', key: 'country', type: 'country', sortable: true, filterable: true, width: '80px' },
+  { label: 'IP-адрес *', key: 'ip', type: 'ip', sortable: true, filterable: true, width: '150px' },
+  { label: 'Страна (2 буквы)*', key: 'country', type: 'country', sortable: true, filterable: true, width: '80px' },
   { label: 'Владелец', key: 'owner', sortable: true, filterable: true, width: '180px' },
-  { label: 'Как внесено на МСЭ', key: 'mse_method', type: 'mse', sortable: true, width: '160px' },
-  { label: 'Примечание к внесению', key: 'note_in', sortable: true, filterable: true, width: '200px' },
-  { label: 'Заявки', key: 'soib_infr', sortable: true, width: '150px' },
-  { label: 'Дата внесения', key: 'date_in', type: 'readonly', sortable: true, width: '150px' },
-  { label: 'Кто вносил', key: 'who_in', type: 'readonly', sortable: true, filterable: true, width: '150px' },
-  { label: 'Примечание к исключению', key: 'note_out', sortable: true, width: '200px' },
-  { label: 'Дата исключения', key: 'date_out', type: 'readonly', sortable: true, width: '150px' },
-  { label: 'Кто исключил', key: 'who_out', type: 'readonly', sortable: true, width: '150px' },
+  { label: 'Как внесено на МСЭ', key: 'mse_method', type: 'cidr', sortable: true, filterable: true, width: '160px' },
+  { label: 'Примечание к внесению *', key: 'note_in', sortable: true, filterable: true, width: '200px' },
+  { label: 'Заявки', key: 'soib_infr', sortable: true, filterable: true, width: '150px' },
+  { label: 'Дата внесения *', key: 'date_in', type: 'readonly', sortable: true, filterable: true, width: '150px' },
+  { label: 'Кто вносит', key: 'who_in', type: 'readonly', sortable: true, filterable: true, width: '150px' },
+  { label: 'Примечание к исключению', key: 'note_out', type: 'readonly', sortable: true, filterable: true, width: '200px' },
+  { label: 'Дата исключения', key: 'date_out', type: 'readonly', sortable: true, filterable: true, width: '150px' },
+  { label: 'Кто исключил', key: 'who_out', type: 'readonly', sortable: true, filterable: true, width: '150px' },
 ]
 
 // ===== IOC Records columns =====
@@ -83,11 +83,11 @@ export const IOC_RECORD_COLUMNS: ColumnDef<any>[] = [
   { label: 'Статус OpenTip', key: 'status_opentip', type: 'status', sortable: true, filterable: true, width: '140px' },
   { label: 'Статус VirusTotal', key: 'status_virustotal', type: 'status', sortable: true, filterable: true, width: '140px' },
   { label: 'Примечание к внесению', key: 'note_in', sortable: true, filterable: true, width: '200px' },
-  { label: 'Дата внесения', key: 'date_in', type: 'readonly', sortable: true, width: '150px' },
+  { label: 'Дата внесения', key: 'date_in', type: 'readonly', sortable: true, filterable: true, width: '150px' },
   { label: 'Кто вносил', key: 'who_in', type: 'readonly', sortable: true, filterable: true, width: '150px' },
-  { label: 'Примечание к исключению', key: 'note_out', sortable: true, width: '200px' },
-  { label: 'Дата исключения', key: 'date_out', type: 'readonly', sortable: true, width: '150px' },
-  { label: 'Кто исключил', key: 'who_out', type: 'readonly', sortable: true, width: '150px' },
+  { label: 'Примечание к исключению', key: 'note_out', type: 'readonly', sortable: true, filterable: true, width: '200px' },
+  { label: 'Дата исключения', key: 'date_out', type: 'readonly', sortable: true, filterable: true, width: '150px' },
+  { label: 'Кто исключил', key: 'who_out', type: 'readonly', sortable: true, filterable: true, width: '150px' },
 ]
 
 // ===== White IP Records columns =====
@@ -97,15 +97,69 @@ export const WHITE_IP_RECORD_COLUMNS: ColumnDef<any>[] = [
   { label: 'Откуда получено', key: 'from_source', sortable: true, filterable: true, width: '200px' },
   { label: 'Раздел письма', key: 'letter', sortable: true, filterable: true, width: '100px' },
   { label: 'IP-адрес', key: 'ip', type: 'ip', sortable: true, filterable: true, width: '150px' },
-  { label: 'Как внесено на МСЭ', key: 'mse_method', type: 'mse', sortable: true, width: '160px' },
+  { label: 'Как внесено на МСЭ', key: 'mse_method', type: 'cidr', sortable: true, filterable: true, width: '160px' },
   { label: 'Примечание к внесению', key: 'note_in', sortable: true, filterable: true, width: '200px' },
-  { label: 'Заявки', key: 'soib_infr', sortable: true, width: '150px' },
-  { label: 'Дата внесения', key: 'date_in', type: 'readonly', sortable: true, width: '150px' },
+  { label: 'Заявки', key: 'soib_infr', sortable: true, filterable: true, width: '150px' },
+  { label: 'Дата внесения', key: 'date_in', type: 'readonly', sortable: true, filterable: true, width: '150px' },
   { label: 'Кто вносил', key: 'who_in', type: 'readonly', sortable: true, filterable: true, width: '150px' },
-  { label: 'Примечание к исключению', key: 'note_out', sortable: true, width: '200px' },
-  { label: 'Дата исключения', key: 'date_out', type: 'readonly', sortable: true, width: '150px' },
-  { label: 'Кто исключил', key: 'who_out', type: 'readonly', sortable: true, width: '150px' },
+  { label: 'Примечание к исключению', key: 'note_out', type: 'readonly', sortable: true, filterable: true, width: '200px' },
+  { label: 'Дата исключения', key: 'date_out', type: 'readonly', sortable: true, filterable: true, width: '150px' },
+  { label: 'Кто исключил', key: 'who_out', type: 'readonly', sortable: true, filterable: true, width: '150px' },
 ]
+
+// Маппинг ключей колонок (английский → русский) для фильтрации на бэкенде
+// Бэкенд ожидает русские названия колонок в filters, а col.key — английские
+export const IP_FILTER_KEY_MAP: Record<string, string> = {
+  mses: 'Где внесено',
+  date: 'Дата получения',
+  from_source: 'Откуда получено',
+  letter: 'Раздел письма',
+  domain: 'Домен',
+  ip: 'IP-адрес',
+  country: 'Страна',
+  owner: 'Владелец',
+  mse_method: 'Как внесено на МСЭ',
+  note_in: 'Примечание к внесению',
+  soib_infr: 'Заявки',
+  date_in: 'Дата внесения',
+  who_in: 'Кто вносил',
+  note_out: 'Примечание к исключению',
+  date_out: 'Дата исключения',
+  who_out: 'Кто исключил',
+}
+
+export const IOC_FILTER_KEY_MAP: Record<string, string> = {
+  mses: 'Где внесено',
+  date: 'Дата получения',
+  from_source: 'Откуда получено',
+  letter: 'Раздел письма',
+  indicator: 'Индикатор компрометации',
+  encoding: 'Кодировка',
+  status_opentip: 'Статус OpenTip',
+  status_virustotal: 'Статус VirusTotal',
+  note_in: 'Примечание к внесению',
+  date_in: 'Дата внесения',
+  who_in: 'Кто вносил',
+  note_out: 'Примечание к исключению',
+  date_out: 'Дата исключения',
+  who_out: 'Кто исключил',
+}
+
+export const WHITE_IP_FILTER_KEY_MAP: Record<string, string> = {
+  mses: 'Где внесено',
+  date: 'Дата получения',
+  from_source: 'Откуда получено',
+  letter: 'Раздел письма',
+  ip: 'IP-адрес',
+  mse_method: 'Как внесено на МСЭ',
+  note_in: 'Примечание к внесению',
+  soib_infr: 'Заявки',
+  date_in: 'Дата внесения',
+  who_in: 'Кто вносил',
+  note_out: 'Примечание к исключению',
+  date_out: 'Дата исключения',
+  who_out: 'Кто исключил',
+}
 
 // Маппинг русских названий колонок → поля БД (для сортировки)
 export const IP_SORT_MAP: Record<string, string> = {

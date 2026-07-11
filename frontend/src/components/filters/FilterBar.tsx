@@ -1,21 +1,16 @@
-import type { ColumnDef } from '../../utils/constants'
 import GlobalSearch from './GlobalSearch'
 
 interface FilterBarProps {
-  columns: ColumnDef<any>[]
   filters: Record<string, string>
   globalSearch: string
-  onFilterChange: (key: string, value: string) => void
   onGlobalSearchChange: (value: string) => void
   onClearFilters: () => void
   total: number
 }
 
 export default function FilterBar({
-  columns,
   filters,
   globalSearch,
-  onFilterChange,
   onGlobalSearchChange,
   onClearFilters,
   total,

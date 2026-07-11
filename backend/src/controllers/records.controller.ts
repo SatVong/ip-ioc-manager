@@ -4,6 +4,25 @@ import { getPaginatedData } from '../services/pagination.service';
 import { IpRecord, CreateIpRecordRequest } from '../types/record';
 import { PaginationQuery } from '../types/pagination';
 
+// Получить количество записей для каждого MSE
+export async function getMseCounts(req: Request, res: Response): Promise<void> {
+  try {
+    const result = await pool.query('SELECT mses FROM ip_records');
+    const counts: Record<number, number> = {};
+    for (const row of result.rows) {
+      if (row.mses && Array.isArray(row.mses)) {
+        for (const m of row.mses) {
+          counts[m] = (counts[m] || 0) + 1;
+        }
+      }
+    }
+    res.json(counts);
+  } catch (err) {
+    console.error((err as Error).message);
+    res.status(500).json({ error: 'Ошибка при получении статистики MSE' });
+  }
+}
+
 const IP_COLUMN_MAP: Record<string, string> = {
   'id': 'id',
   'Где внесено': 'mses',
@@ -40,12 +59,17 @@ export async function getAllRecords(req: Request, res: Response): Promise<void> 
 // Получить записи с пагинацией
 export async function getRecordsPaginated(req: Request, res: Response): Promise<void> {
   try {
+    const filters: Record<string, string> = req.query.filters ? JSON.parse(req.query.filters as string) : {};
+    // Добавляем фильтр по mse, если передан как отдельный параметр
+    if (req.query.mse) {
+      filters['Где внесено'] = req.query.mse as string;
+    }
     const query: PaginationQuery = {
       page: parseInt(req.query.page as string) || 1,
       limit: parseInt(req.query.limit as string) || 10,
       sortBy: (req.query.sortBy as string) || 'id',
       sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
-      filters: req.query.filters ? JSON.parse(req.query.filters as string) : {},
+      filters,
       globalSearch: (req.query.globalSearch as string) || '',
     };
 
