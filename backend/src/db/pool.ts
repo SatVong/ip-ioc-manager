@@ -29,9 +29,9 @@ export async function ensureAdminExists(): Promise<void> {
       const hash = await bcrypt.hash('admin123', salt);
 
       await pool.query(
-        `INSERT INTO users (username, password_hash, full_name, email, role, can_manage_users, can_delete, can_import) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        ['admin', hash, 'Главный администратор', 'admin@local', 'admin', true, true, true]
+        `INSERT INTO users (username, password_hash, full_name, email, role, is_active, can_manage_users, can_delete, can_import)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        ['admin', hash, 'Главный администратор', 'admin@local', 'admin', true, true, true, true]
       );
       console.log('✅ Администратор создан');
     } else {

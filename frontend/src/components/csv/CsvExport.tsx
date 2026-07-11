@@ -6,9 +6,25 @@ interface CsvExportProps {
   filename?: string
 }
 
+function getTimestamp(): string {
+  const now = new Date()
+  const day = String(now.getDate()).padStart(2, '0')
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const year = String(now.getFullYear()).slice(2)
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  return `${day}.${month}.${year}_${hours}${minutes}`
+}
+
 export default function CsvExport({ data, columns, filename = 'export.csv' }: CsvExportProps) {
   const handleExport = () => {
     if (data.length === 0) return
+
+    // Добавляем дату/время в имя файла: name_dd.mm.yy_hhmm.csv
+    const extIndex = filename.lastIndexOf('.')
+    const baseName = extIndex !== -1 ? filename.slice(0, extIndex) : filename
+    const ext = extIndex !== -1 ? filename.slice(extIndex) : '.csv'
+    const datedFilename = `${baseName}_${getTimestamp()}${ext}`
 
     // Функция экранирования для CSV (оборачиваем в кавычки если есть ; или ")
     const escapeCsv = (val: string): string => {
@@ -37,7 +53,7 @@ export default function CsvExport({ data, columns, filename = 'export.csv' }: Cs
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = filename
+    link.download = datedFilename
     link.click()
     URL.revokeObjectURL(url)
   }

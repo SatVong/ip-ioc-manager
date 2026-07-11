@@ -375,15 +375,33 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
     onClose()
   }
 
+  // Определение кодировки по длине хеша (с поддержкой sha512)
+  const detectEncodingWithSha512 = (hash: string): string => {
+    const trimmed = hash.trim()
+    if (!/^[0-9a-fA-F]+$/.test(trimmed)) return ''
+    const len = trimmed.length
+    if (len === 32) return 'md5'
+    if (len === 40) return 'sha1'
+    if (len === 64) return 'sha256'
+    if (len === 128) return 'sha512'
+    return ''
+  }
+
   const renderField = (col: ColumnDef<any>) => {
     const key = col.key as string
     const isAutoField = key === 'date_in' || key === 'who_in'
     const isNoteField = key === 'note_in'
+    const isIndicatorField = key === 'indicator' && variant === 'ioc'
     const hint = FIELD_HINTS[key]
     const placeholder = FIELD_PLACEHOLDERS[key] || col.label
     const error = errors[key]
     const requiredFields = getRequiredFields()
     const isRequired = requiredFields.includes(key)
+
+    // Для IOC определяем кодировку
+    const indicatorValue = formData.indicator || ''
+    const detectedEncoding = detectEncodingWithSha512(indicatorValue)
+    const encodingOptions = ['md5', 'sha1', 'sha256', 'sha512']
 
     return (
       <div key={key}>
@@ -431,6 +449,33 @@ export default function AddRecordModal({ isOpen, onClose, onSave, columns, title
               undefined
             }
           />
+        )}
+        {/* Счётчик символов и радиобаттоны для IOC indicator */}
+        {isIndicatorField && (
+          <div className="mt-2 space-y-2">
+            <p className="text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
+              Введено символов: {indicatorValue.length}
+            </p>
+            <div className="flex gap-3">
+              {encodingOptions.map((enc) => (
+                <label
+                  key={enc}
+                  className="flex items-center gap-1.5 text-xs cursor-pointer"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  <input
+                    type="radio"
+                    name="encoding-radio"
+                    checked={detectedEncoding === enc}
+                    readOnly
+                    className="w-3 h-3"
+                    style={{ accentColor: 'var(--color-primary)' }}
+                  />
+                  <span>{enc.toUpperCase()}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         )}
         {hint && (
           <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>

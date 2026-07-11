@@ -72,8 +72,17 @@ export default function UsersPage() {
   }, [loadUsers])
 
   const handleCreate = useCallback(async () => {
-    if (!formData.username || !formData.password) {
-      addNotification('warning', 'Логин и пароль обязательны')
+    // Валидация
+    if (!formData.username || formData.username.length < 4) {
+      addNotification('warning', 'Логин должен быть не менее 4 символов')
+      return
+    }
+    if (!formData.password || formData.password.length < 16) {
+      addNotification('warning', 'Пароль должен быть не менее 16 символов')
+      return
+    }
+    if (!formData.full_name || formData.full_name.trim() === '') {
+      addNotification('warning', 'ФИО обязательно для заполнения')
       return
     }
     try {
@@ -436,73 +445,6 @@ export default function UsersPage() {
               }}
               placeholder="Введите ФИО"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
-              Должность
-            </label>
-            <input
-              type="text"
-              value={formData.position}
-              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg text-sm border"
-              style={{
-                backgroundColor: 'var(--color-card-bg)',
-                color: 'var(--color-text)',
-                borderColor: 'var(--color-border)',
-              }}
-              placeholder="Введите должность"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
-              Отдел
-            </label>
-            <input
-              type="text"
-              value={formData.department}
-              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg text-sm border"
-              style={{
-                backgroundColor: 'var(--color-card-bg)',
-                color: 'var(--color-text)',
-                borderColor: 'var(--color-border)',
-              }}
-              placeholder="Введите отдел"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
-              Email
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg text-sm border"
-              style={{
-                backgroundColor: 'var(--color-card-bg)',
-                color: 'var(--color-text)',
-                borderColor: 'var(--color-border)',
-              }}
-              placeholder="Введите email"
-            />
-          </div>
-          <div>
-            <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm border cursor-pointer"
-              style={{
-                borderColor: 'var(--color-border)',
-                backgroundColor: formData.is_active ? '#22c55e10' : 'transparent',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                className="rounded"
-              />
-              <span style={{ color: 'var(--color-text)' }}>Активен</span>
-            </label>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>

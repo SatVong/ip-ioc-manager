@@ -176,7 +176,7 @@ export default function IpRecordsPage() {
           IP Источники
         </h2>
         <div className="flex items-center gap-2">
-          {canImport && <CsvImport onImport={handleCsvImport} />}
+          {canImport && <CsvImport onImport={handleCsvImport} columns={IP_RECORD_COLUMNS} currentUser={user?.full_name || user?.username || ''} />}
           {canExport && <CsvExport data={data as unknown as Record<string, unknown>[]} columns={IP_RECORD_COLUMNS} filename="ip-records.csv" />}
           {canCreate && (
             <button
