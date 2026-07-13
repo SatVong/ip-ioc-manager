@@ -146,16 +146,18 @@ export default function IocRecordsPage() {
   )
 
   const handleCsvImport = useCallback(
-    async (records: Record<string, string>[]) => {
+    async (records: Record<string, string>[], onProgress: (current: number, total: number) => void) => {
       try {
-        for (const record of records) {
-          await iocRecordsApi.createIocRecord(record as unknown as Partial<IocRecord>)
+        for (let i = 0; i < records.length; i++) {
+          await iocRecordsApi.createIocRecord(records[i] as unknown as Partial<IocRecord>)
+          onProgress(i + 1, records.length)
         }
         addNotification('success', `Импортировано ${records.length} записей`)
         refresh()
         setMseRefreshCounter(c => c + 1)
       } catch {
         addNotification('error', 'Ошибка при импорте CSV')
+        throw new Error('Import failed')
       }
     },
     [addNotification, refresh]

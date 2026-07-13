@@ -4,7 +4,8 @@ import type { ColumnDef } from '../../utils/constants'
 import { VALID_COUNTRIES } from './csvValidation'
 
 interface CsvImportProps {
-  onImport: (data: Record<string, string>[]) => void
+  /** Асинхронная функция импорта. Должна вызывать onProgress(i, total) по мере отправки записей */
+  onImport: (data: Record<string, string>[], onProgress: (current: number, total: number) => void) => Promise<void>
   columns: ColumnDef<any>[]
   /** Текущий пользователь для автозаполнения who_in */
   currentUser?: string
@@ -208,14 +209,15 @@ export default function CsvImport({ onImport, columns, currentUser = '', variant
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [totalRecords, setTotalRecords] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [progress, setProgress] = useState(0)
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
+  const [showProgressModal, setShowProgressModal] = useState(false)
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     setLoading(true)
-    setProgress(0)
+    setImportProgress({ current: 0, total: 0 })
     setErrors([])
     setShowErrorModal(false)
 
@@ -284,8 +286,6 @@ export default function CsvImport({ onImport, columns, currentUser = '', variant
           setLoading(false)
           return
         }
-
-        setProgress(30)
 
         // Валидация
         const validationErrors: ValidationError[] = []
@@ -411,7 +411,6 @@ export default function CsvImport({ onImport, columns, currentUser = '', variant
           }
         })
 
-        setProgress(70)
         setTotalRecords(records.length)
 
         if (validationErrors.length > 0) {
@@ -419,7 +418,7 @@ export default function CsvImport({ onImport, columns, currentUser = '', variant
           setErrors(validationErrors)
           setShowErrorModal(true)
           setLoading(false)
-          setProgress(0)
+          setImportProgress({ current: 0, total: 0 })
         } else {
           // Авто-заполнение и подготовка перед импортом
           const now = getCurrentDateTime()
@@ -428,8 +427,16 @@ export default function CsvImport({ onImport, columns, currentUser = '', variant
             if (!record.date_in) record.date_in = now
             if (!record.who_in) record.who_in = currentUser
 
-            // Очистка mses: пустая строка → удаляем
-            if (record.mses === '') {
+            // Парсинг mses: строка "3,5,7" → массив [3,5,7]
+            if (record.mses && record.mses.trim() !== '') {
+              const parts = record.mses.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= 15)
+              if (parts.length > 0) {
+                // Присваиваем массив чисел напрямую (не строку!)
+                ;(record as unknown as Record<string, unknown>).mses = parts
+              } else {
+                delete record.mses
+              }
+            } else {
               delete record.mses
             }
 
@@ -444,21 +451,32 @@ export default function CsvImport({ onImport, columns, currentUser = '', variant
             return record
           })
 
-          setProgress(90)
+          setImportProgress({ current: 0, total: enrichedRecords.length })
+          setShowProgressModal(true)
           console.log(`📄 CSV Import - importing ${enrichedRecords.length} records`)
-          onImport(enrichedRecords)
-          setProgress(100)
 
-          // Сброс через 1.5 сек
-          setTimeout(() => {
-            setLoading(false)
-            setProgress(0)
-          }, 1500)
+          onImport(enrichedRecords, (current, total) => {
+            setImportProgress({ current, total })
+          })
+            .then(() => {
+              setImportProgress({ current: totalRecords, total: totalRecords })
+              // Сброс через 1.5 сек
+              setTimeout(() => {
+                setLoading(false)
+                setImportProgress({ current: 0, total: 0 })
+                setShowProgressModal(false)
+              }, 1500)
+            })
+            .catch(() => {
+              setLoading(false)
+              setImportProgress({ current: 0, total: 0 })
+              setShowProgressModal(false)
+            })
         }
       } catch (err) {
         console.error('❌ CSV Import - error:', err)
         setLoading(false)
-        setProgress(0)
+        setImportProgress({ current: 0, total: 0 })
       }
     }
     reader.readAsText(file, 'UTF-8')
@@ -493,18 +511,36 @@ export default function CsvImport({ onImport, columns, currentUser = '', variant
         />
       </label>
 
-      {/* Прогресс-бар */}
-      {loading && (
-        <div className="w-full bg-gray-200 rounded-full h-2 mt-2" style={{ backgroundColor: 'var(--color-border)' }}>
-          <div
-            className="h-2 rounded-full transition-all duration-300"
-            style={{
-              width: `${progress}%`,
-              backgroundColor: progress === 100 ? '#22c55e' : 'var(--color-primary)',
-            }}
-          />
+      {/* Модальное окно прогресса импорта (по центру экрана) */}
+      <Modal
+        isOpen={showProgressModal}
+        onClose={() => {}}
+        title="Импорт CSV"
+        width="400px"
+      >
+        <div className="space-y-4 text-center">
+          <div className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
+            Импорт записей...
+          </div>
+          <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            Загружено {importProgress.current} из {importProgress.total}
+          </div>
+          <div className="w-full rounded-full h-3" style={{ backgroundColor: 'var(--color-border)' }}>
+            <div
+              className="h-3 rounded-full transition-all duration-200"
+              style={{
+                width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%`,
+                backgroundColor: importProgress.current === importProgress.total ? '#22c55e' : 'var(--color-primary)',
+              }}
+            />
+          </div>
+          {importProgress.current === importProgress.total && importProgress.total > 0 && (
+            <div className="text-sm font-medium" style={{ color: '#22c55e' }}>
+              ✓ Импорт завершён
+            </div>
+          )}
         </div>
-      )}
+      </Modal>
 
       {/* Модальное окно с ошибками валидации */}
       <Modal
@@ -512,7 +548,7 @@ export default function CsvImport({ onImport, columns, currentUser = '', variant
         onClose={() => {
           setShowErrorModal(false)
           setLoading(false)
-          setProgress(0)
+          setImportProgress({ current: 0, total: 0 })
         }}
         title="Ошибки импорта CSV"
         width="700px"
@@ -547,7 +583,7 @@ export default function CsvImport({ onImport, columns, currentUser = '', variant
               onClick={() => {
                 setShowErrorModal(false)
                 setLoading(false)
-                setProgress(0)
+                setImportProgress({ current: 0, total: 0 })
               }}
               className="px-4 py-2 rounded-lg text-sm transition-colors hover:opacity-80"
               style={{

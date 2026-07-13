@@ -513,7 +513,17 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
   - [`IpRecordsPage.tsx`](frontend/src/pages/IpRecordsPage.tsx:179) — `variant="ip"`
   - [`IocRecordsPage.tsx`](frontend/src/pages/IocRecordsPage.tsx:178) — `variant="ioc"`
   - [`WhiteIpRecordsPage.tsx`](frontend/src/pages/WhiteIpRecordsPage.tsx:178) — `variant="white-ip"`
+- **FIX 76**: CsvImport — парсинг `mses` из строки `"3,5,7"` в массив чисел. **Критический баг**: изначально использовался `JSON.stringify(parts)`, который отправлял строку `"[3,5,7]"` вместо массива `[3,5,7]`. Бэкенд ожидает `number[]`. Исправлено на прямое присваивание массива через приведение типа: `;(record as unknown as Record<string, unknown>).mses = parts`. Также добавлена фильтрация `n >= 1 && n <= 15` (как в оригинальном Vanilla JS).
+- **FIX 77**: CsvImport — модальное окно прогресса по центру экрана с счётчиком "Загружено N из M". Прогресс-бар под кнопкой заменён на модальное окно. `onImport` теперь асинхронный с callback `onProgress(current, total)`. Все 3 страницы обновлены.
+- **FIX 78**: CsvImport — `handleCsvImport` на всех страницах теперь вызывает `onProgress(i + 1, records.length)` после каждой отправленной записи, что обновляет модальное окно прогресса в реальном времени.
+- **FIX 79**: Docker build — исправлена ошибка `TS6133: 'progress' is declared but its value is never read`. Удалены неиспользуемые `progress`/`setProgress` из состояния CsvImport. Все вызовы `setProgress(...)` заменены на `setImportProgress(...)`.
+
+### FIX 79 (Round 9 — Docker build) — TS6133: unused variable 'progress'
+- **Проблема**: при сборке Docker (`docker compose build frontend`) TypeScript 6 выдавал ошибку `TS6133: 'progress' is declared but its value is never read`.
+- **Причина**: в [`CsvImport.tsx`](frontend/src/components/csv/CsvImport.tsx) остались неиспользуемые переменные состояния `progress`/`setProgress` от старой реализации прогресс-бара (FIX 74). После замены на модальное окно (FIX 77) эти переменные не использовались, но не были удалены.
+- **Исправление**: удалены `progress`/`setProgress` из `useState`. Все вызовы `setProgress(...)` заменены на `setImportProgress(...)`.
+- **Текущий статус**: код готов к тестированию. Пользователю нужно выполнить `docker compose build frontend && docker compose up -d` и проверить импорт CSV с `"1,2,4"` в колонке "Где внесено".
 
 ---
 
-*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-13T17:01 UTC+3 — Round 9: FIX 72-75)*
+*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-13T17:54 UTC+3 — Round 9: FIX 72-78)*
