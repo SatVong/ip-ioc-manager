@@ -38,7 +38,8 @@ export default function CsvExport({ data, columns, filename = 'export.csv' }: Cs
     const rows = data.map((record) =>
       columns.map((col) => {
         const value = record[col.key as string]
-        if (Array.isArray(value)) return value.join(';')
+        // Массивы (mses) разделяем запятой, чтобы при импорте можно было распарсить
+        if (Array.isArray(value)) return value.join(',')
         return escapeCsv(String(value ?? ''))
       })
     )

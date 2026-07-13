@@ -8,12 +8,108 @@ interface CsvImportProps {
   columns: ColumnDef<any>[]
   /** Текущий пользователь для автозаполнения who_in */
   currentUser?: string
+  /** Вариант: ip / ioc / white-ip */
+  variant?: 'ip' | 'ioc' | 'white-ip'
 }
 
 interface ValidationError {
   row: number
   column: string
   message: string
+}
+
+// ==================== ОБЯЗАТЕЛЬНЫЕ ПОЛЯ (золотой минимум) ====================
+const REQUIRED_FIELDS: Record<string, string[]> = {
+  ip: ['date', 'from_source', 'ip', 'note_in'],
+  'white-ip': ['date', 'from_source', 'ip', 'note_in'],
+  ioc: ['date', 'from_source', 'indicator', 'note_in'],
+}
+
+// ==================== ПАРСИНГ CSV (из оригинального Vanilla JS) ====================
+// Разделитель — точка с запятой, поддержка кавычек
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    if (char === '"') {
+      inQuotes = !inQuotes
+    } else if (char === ';' && !inQuotes) {
+      result.push(current)
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  result.push(current)
+  return result.map(field => field.trim())
+}
+
+// Нечёткое сопоставление заголовков: если точное совпадение не найдено,
+// пробуем альтернативные варианты (например, "IP-адресс" → "IP-адрес")
+function fuzzyMatchHeader(header: string, columns: ColumnDef<any>[]): string | null {
+  // 1. Точное совпадение
+  const exact = columns.find((c) => c.label === header)
+  if (exact) return exact.key as string
+
+  // 2. Убираем лишние пробелы и сравниваем без учёта регистра
+  const normalized = header.trim().toLowerCase()
+  for (const col of columns) {
+    if (col.label.trim().toLowerCase() === normalized) {
+      console.log(`📄 CSV Import - fuzzy match: "${header}" → "${col.label}" (case-insensitive)`)
+      return col.key as string
+    }
+  }
+
+  // 3. Специфичные замены для известных опечаток
+  const typoMap: Record<string, string> = {
+    'IP-адресс': 'IP-адрес',
+    'ip-адресс': 'IP-адрес',
+    'IP-адресc': 'IP-адрес',
+  }
+  const corrected = typoMap[header.trim()]
+  if (corrected) {
+    const col = columns.find((c) => c.label === corrected)
+    if (col) {
+      console.log(`📄 CSV Import - typo fix: "${header}" → "${corrected}" → key "${String(col.key)}"`)
+      return col.key as string
+    }
+  }
+
+  // 4. Проверяем, не содержит ли заголовок известное ключевое слово
+  const keywordMap: Record<string, string> = {
+    'ip': 'ip',
+    'адрес': 'ip',
+    'address': 'ip',
+    'страна': 'country',
+    'дата': 'date',
+    'домен': 'domain',
+    'владелец': 'owner',
+    'индикатор': 'indicator',
+    'кодировка': 'encoding',
+    'примечание': 'note_in',
+    'откуда': 'from_source',
+    'раздел': 'letter',
+    'заявки': 'soib_infr',
+  }
+  const lower = header.trim().toLowerCase()
+  for (const [keyword, key] of Object.entries(keywordMap)) {
+    if (lower.includes(keyword)) {
+      const col = columns.find((c) => c.key === key)
+      if (col) {
+        console.log(`📄 CSV Import - keyword match: "${header}" contains "${keyword}" → key "${key}"`)
+        return col.key as string
+      }
+    }
+  }
+
+  return null
+}
+
+// Проверка, что запись не пустая (хотя бы одно поле заполнено)
+function isRecordEmpty(record: Record<string, string>): boolean {
+  return Object.values(record).every((v) => !v || v.trim() === '')
 }
 
 // Валидация IP-адреса
@@ -85,6 +181,16 @@ function isValidCountry(country: string): boolean {
   return VALID_COUNTRIES.includes(country.toUpperCase())
 }
 
+// Автоопределение кодировки по длине хеша
+function detectEncoding(hash: string): string | null {
+  const len = hash.trim().length
+  if (len === 32) return 'md5'
+  if (len === 40) return 'sha1'
+  if (len === 64) return 'sha256'
+  if (len === 128) return 'sha512'
+  return null
+}
+
 // Получить текущую дату и время в формате ДД.ММ.ГГГГ ЧЧ:ММ
 function getCurrentDateTime(): string {
   const now = new Date()
@@ -96,156 +202,266 @@ function getCurrentDateTime(): string {
   return `${day}.${month}.${year} ${hours}:${minutes}`
 }
 
-export default function CsvImport({ onImport, columns, currentUser = '' }: CsvImportProps) {
+export default function CsvImport({ onImport, columns, currentUser = '', variant = 'ip' }: CsvImportProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [errors, setErrors] = useState<ValidationError[]>([])
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [totalRecords, setTotalRecords] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(0)
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
+    setLoading(true)
+    setProgress(0)
+    setErrors([])
+    setShowErrorModal(false)
+
     const reader = new FileReader()
     reader.onload = (event) => {
-      const text = event.target?.result as string
-      const lines = text.split('\n').filter((line) => line.trim())
-      if (lines.length < 2) return
+      try {
+        const text = event.target?.result as string
+        console.log('📄 CSV Import - raw text length:', text.length)
 
-      const headers = lines[0].split(',').map((h) => h.trim())
+        // Убираем BOM (Byte Order Mark) если есть
+        const cleanText = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text
 
-      // Строим маппинг: русский заголовок из CSV → английский ключ колонки
-      // Например: "IP-адрес" → "ip", "Страна" → "country"
-      const headerToKeyMap: Record<string, string> = {}
-      for (const header of headers) {
-        const col = columns.find((c) => c.label === header)
-        if (col) {
-          headerToKeyMap[header] = col.key as string
-        }
-      }
+        // Разбиваем на строки
+        const rawLines = cleanText.split('\n')
+        console.log('📄 CSV Import - raw lines count:', rawLines.length)
 
-      // Парсим записи, мапя русские заголовки на английские ключи
-      const records = lines.slice(1).map((line) => {
-        const values = line.split(',').map((v) => v.trim())
-        const record: Record<string, string> = {}
-        headers.forEach((header, i) => {
-          const mappedKey = headerToKeyMap[header]
-          if (mappedKey) {
-            record[mappedKey] = values[i] || ''
-          }
-        })
-        return record
-      })
-
-      // Валидация
-      const validationErrors: ValidationError[] = []
-      records.forEach((record, idx) => {
-        const rowNum = idx + 2 // +2 потому что 1 = заголовок, 0-based индекс
-
-        for (const col of columns) {
-          const key = col.key as string
-          const value = record[key] || ''
-          const colLabel = col.label
-
-          // Пропускаем служебные поля (date_in/who_in — заполнятся автоматически)
-          if (key === 'date_in' || key === 'who_in') continue
-
-          // Пропускаем пустые необязательные поля
-          if (!value) continue
-
-          // Валидация IP
-          if (col.type === 'ip' && value) {
-            if (!isValidIP(value)) {
-              validationErrors.push({
-                row: rowNum,
-                column: colLabel,
-                message: `неверный формат IP: xxx.xxx.xxx.xxx (0-255)`,
-              })
-            }
-          }
-
-          // Валидация CIDR
-          if (col.type === 'cidr' && value) {
-            if (!isValidCIDR(value)) {
-              validationErrors.push({
-                row: rowNum,
-                column: colLabel,
-                message: `неверный формат. Используйте xxx.xxx.xxx.xxx/xx или "-"`,
-              })
-            }
-          }
-
-          // Валидация страны
-          if (key === 'country' && value) {
-            if (!isValidCountry(value.toUpperCase())) {
-              validationErrors.push({
-                row: rowNum,
-                column: colLabel,
-                message: `страна "${value}" не входит в список допустимых стран. Используйте "XX" если страна неизвестна`,
-              })
-            }
-          }
-
-          // Валидация даты
-          if ((col.type === 'date' || key === 'date' || key === 'date_in') && value) {
-            if (!isValidDate(value)) {
-              validationErrors.push({
-                row: rowNum,
-                column: colLabel,
-                message: `неверный формат даты. Используйте ДД.ММ.ГГГГ или ДД.ММ.ГГГГ ЧЧ:ММ`,
-              })
-            }
-          }
-
-          // Валидация длины
-          if (key === 'from_source' && value.length > 64) {
-            validationErrors.push({ row: rowNum, column: colLabel, message: `максимум 64 символа (введено ${value.length})` })
-          }
-          if (key === 'letter' && value.length > 24) {
-            validationErrors.push({ row: rowNum, column: colLabel, message: `максимум 24 символа (введено ${value.length})` })
-          }
-          if (key === 'domain' && value.length > 64) {
-            validationErrors.push({ row: rowNum, column: colLabel, message: `максимум 64 символа (введено ${value.length})` })
-          }
-          if (key === 'owner' && value.length > 64) {
-            validationErrors.push({ row: rowNum, column: colLabel, message: `максимум 64 символа (введено ${value.length})` })
-          }
-          if (key === 'note_in' && value.length > 128) {
-            validationErrors.push({ row: rowNum, column: colLabel, message: `максимум 128 символов (введено ${value.length})` })
-          }
-
-          // Валидация IOC (hex)
-          if (key === 'indicator' && value) {
-            if (!isValidHex(value)) {
-              const badChar = value.split('').find(c => !/[0-9a-fA-F]/.test(c))
-              const pos = value.indexOf(badChar || '') + 1
-              validationErrors.push({
-                row: rowNum,
-                column: colLabel,
-                message: `неверный формат: недопустимый символ "${badChar}" на позиции ${pos}. Допустимы только hex-символы (0-9, a-f)`,
-              })
-            }
+        // Находим первую непустую строку — это заголовок
+        let headerLineIndex = -1
+        for (let i = 0; i < rawLines.length; i++) {
+          if (rawLines[i].trim() !== '') {
+            headerLineIndex = i
+            break
           }
         }
-      })
 
-      setTotalRecords(records.length)
+        if (headerLineIndex === -1) {
+          console.warn('⚠️ CSV Import - no non-empty lines found')
+          setLoading(false)
+          return
+        }
 
-      if (validationErrors.length > 0) {
-        setErrors(validationErrors)
-        setShowErrorModal(true)
-      } else {
-        // Авто-заполнение date_in и who_in перед импортом
-        const now = getCurrentDateTime()
-        const enrichedRecords = records.map((record) => {
-          if (!record.date_in) record.date_in = now
-          if (!record.who_in) record.who_in = currentUser
+        // Парсим заголовки
+        const headers = parseCSVLine(rawLines[headerLineIndex])
+        console.log('📄 CSV Import - parsed headers:', headers)
+
+        // Строим маппинг: русский заголовок из CSV → английский ключ колонки
+        const headerToKeyMap: Record<string, string> = {}
+        for (const header of headers) {
+          const key = fuzzyMatchHeader(header, columns)
+          if (key) {
+            headerToKeyMap[header] = key
+          } else {
+            console.warn(`⚠️ CSV Import - header "${header}" not found in columns!`)
+          }
+        }
+
+        // Парсим записи
+        const rawRecords = rawLines.slice(headerLineIndex + 1).map((line) => {
+          const values = parseCSVLine(line)
+          const record: Record<string, string> = {}
+          headers.forEach((header, i) => {
+            const mappedKey = headerToKeyMap[header]
+            if (mappedKey) {
+              record[mappedKey] = values[i] || ''
+            }
+          })
           return record
         })
-        onImport(enrichedRecords)
+
+        // Фильтруем пустые записи
+        const records = rawRecords.filter(r => !isRecordEmpty(r))
+        console.log(`📄 CSV Import - records after filtering: ${records.length}`)
+
+        if (records.length === 0) {
+          console.warn('⚠️ CSV Import - no valid records found')
+          setLoading(false)
+          return
+        }
+
+        setProgress(30)
+
+        // Валидация
+        const validationErrors: ValidationError[] = []
+        const requiredKeys = REQUIRED_FIELDS[variant] || []
+
+        records.forEach((record, idx) => {
+          const rowNum = idx + 2 // +2: 1 = заголовок, 0-based индекс
+
+          // 1. Проверка обязательных полей (золотой минимум)
+          for (const reqKey of requiredKeys) {
+            const value = (record[reqKey] || '').trim()
+            if (!value) {
+              // Находим русскую метку колонки
+              const col = columns.find((c) => c.key === reqKey)
+              const colLabel = col ? col.label : reqKey
+              validationErrors.push({
+                row: rowNum,
+                column: colLabel,
+                message: `обязательное поле не заполнено`,
+              })
+            }
+          }
+
+          // 2. Проверка остальных полей
+          for (const col of columns) {
+            const key = col.key as string
+            const value = record[key] || ''
+            const colLabel = col.label
+
+            // Пропускаем служебные поля
+            if (key === 'date_in' || key === 'who_in') continue
+
+            // Пропускаем пустые необязательные поля
+            if (!value) continue
+
+            // Валидация IP
+            if (col.type === 'ip' && value) {
+              if (!isValidIP(value)) {
+                validationErrors.push({
+                  row: rowNum,
+                  column: colLabel,
+                  message: `неверный формат IP: xxx.xxx.xxx.xxx (0-255)`,
+                })
+              }
+            }
+
+            // Валидация CIDR
+            if (col.type === 'cidr' && value) {
+              if (!isValidCIDR(value)) {
+                validationErrors.push({
+                  row: rowNum,
+                  column: colLabel,
+                  message: `неверный формат. Используйте xxx.xxx.xxx.xxx/xx или "-"`,
+                })
+              }
+            }
+
+            // Валидация страны
+            if (key === 'country' && value) {
+              if (!isValidCountry(value.toUpperCase())) {
+                validationErrors.push({
+                  row: rowNum,
+                  column: colLabel,
+                  message: `страна "${value}" не входит в список допустимых стран. Используйте "XX" если страна неизвестна`,
+                })
+              }
+            }
+
+            // Валидация даты
+            if ((col.type === 'date' || key === 'date' || key === 'date_in') && value) {
+              if (!isValidDate(value)) {
+                validationErrors.push({
+                  row: rowNum,
+                  column: colLabel,
+                  message: `неверный формат даты. Используйте ДД.ММ.ГГГГ или ДД.ММ.ГГГГ ЧЧ:ММ`,
+                })
+              }
+            }
+
+            // Валидация длины
+            if (key === 'from_source' && value.length > 64) {
+              validationErrors.push({ row: rowNum, column: colLabel, message: `максимум 64 символа (введено ${value.length})` })
+            }
+            if (key === 'letter' && value.length > 24) {
+              validationErrors.push({ row: rowNum, column: colLabel, message: `максимум 24 символа (введено ${value.length})` })
+            }
+            if (key === 'domain' && value.length > 64) {
+              validationErrors.push({ row: rowNum, column: colLabel, message: `максимум 64 символа (введено ${value.length})` })
+            }
+            if (key === 'owner' && value.length > 64) {
+              validationErrors.push({ row: rowNum, column: colLabel, message: `максимум 64 символа (введено ${value.length})` })
+            }
+            if (key === 'note_in' && value.length > 128) {
+              validationErrors.push({ row: rowNum, column: colLabel, message: `максимум 128 символов (введено ${value.length})` })
+            }
+
+            // Валидация IOC (hex + длина)
+            if (key === 'indicator' && value) {
+              // Проверка hex
+              if (!isValidHex(value)) {
+                const badChar = value.split('').find(c => !/[0-9a-fA-F]/.test(c))
+                const pos = value.indexOf(badChar || '') + 1
+                validationErrors.push({
+                  row: rowNum,
+                  column: colLabel,
+                  message: `неверный формат: недопустимый символ "${badChar}" на позиции ${pos}. Допустимы только hex-символы (0-9, a-f)`,
+                })
+              }
+              // Проверка длины хеша
+              const validLengths = [32, 40, 64, 128]
+              if (!validLengths.includes(value.length)) {
+                const detected = detectEncoding(value)
+                const hint = detected
+                  ? `По длине ${value.length} определена кодировка "${detected}", но ожидается ${detected === 'md5' ? 32 : detected === 'sha1' ? 40 : detected === 'sha256' ? 64 : 128} символов.`
+                  : `Длина ${value.length} символов не соответствует ни одной известной кодировке (md5=32, sha1=40, sha256=64, sha512=128).`
+                validationErrors.push({
+                  row: rowNum,
+                  column: colLabel,
+                  message: `неверная длина хеша: ${value.length} символов. ${hint}`,
+                })
+              }
+            }
+          }
+        })
+
+        setProgress(70)
+        setTotalRecords(records.length)
+
+        if (validationErrors.length > 0) {
+          console.warn(`⚠️ CSV Import - ${validationErrors.length} validation errors`)
+          setErrors(validationErrors)
+          setShowErrorModal(true)
+          setLoading(false)
+          setProgress(0)
+        } else {
+          // Авто-заполнение и подготовка перед импортом
+          const now = getCurrentDateTime()
+          const enrichedRecords = records.map((record) => {
+            // Авто-заполнение date_in / who_in
+            if (!record.date_in) record.date_in = now
+            if (!record.who_in) record.who_in = currentUser
+
+            // Очистка mses: пустая строка → удаляем
+            if (record.mses === '') {
+              delete record.mses
+            }
+
+            // Автоопределение кодировки для IOC
+            if (variant === 'ioc' && record.indicator && !record.encoding) {
+              const detected = detectEncoding(record.indicator)
+              if (detected) {
+                record.encoding = detected
+              }
+            }
+
+            return record
+          })
+
+          setProgress(90)
+          console.log(`📄 CSV Import - importing ${enrichedRecords.length} records`)
+          onImport(enrichedRecords)
+          setProgress(100)
+
+          // Сброс через 1.5 сек
+          setTimeout(() => {
+            setLoading(false)
+            setProgress(0)
+          }, 1500)
+        }
+      } catch (err) {
+        console.error('❌ CSV Import - error:', err)
+        setLoading(false)
+        setProgress(0)
       }
     }
-    reader.readAsText(file)
+    reader.readAsText(file, 'UTF-8')
 
     // Сброс input для повторного выбора того же файла
     if (inputRef.current) {
@@ -260,12 +476,14 @@ export default function CsvImport({ onImport, columns, currentUser = '' }: CsvIm
         style={{
           color: 'var(--color-primary)',
           border: '1px solid var(--color-primary)',
+          opacity: loading ? 0.6 : 1,
+          pointerEvents: loading ? 'none' : 'auto',
         }}
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
         </svg>
-        Импорт CSV
+        {loading ? 'Импорт...' : 'Импорт CSV'}
         <input
           ref={inputRef}
           type="file"
@@ -275,12 +493,29 @@ export default function CsvImport({ onImport, columns, currentUser = '' }: CsvIm
         />
       </label>
 
+      {/* Прогресс-бар */}
+      {loading && (
+        <div className="w-full bg-gray-200 rounded-full h-2 mt-2" style={{ backgroundColor: 'var(--color-border)' }}>
+          <div
+            className="h-2 rounded-full transition-all duration-300"
+            style={{
+              width: `${progress}%`,
+              backgroundColor: progress === 100 ? '#22c55e' : 'var(--color-primary)',
+            }}
+          />
+        </div>
+      )}
+
       {/* Модальное окно с ошибками валидации */}
       <Modal
         isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
+        onClose={() => {
+          setShowErrorModal(false)
+          setLoading(false)
+          setProgress(0)
+        }}
         title="Ошибки импорта CSV"
-        width="600px"
+        width="700px"
       >
         <div className="space-y-4">
           <div
@@ -291,10 +526,10 @@ export default function CsvImport({ onImport, columns, currentUser = '' }: CsvIm
               border: '1px solid #ef444430',
             }}
           >
-            Общее количество записей {totalRecords} из них {errors.length} с ошибками:
+            Всего записей: {totalRecords}. Найдено {errors.length} ошибок. Исправьте их и повторите импорт.
           </div>
           <div
-            className="max-h-64 overflow-y-auto space-y-1 text-sm font-mono"
+            className="max-h-80 overflow-y-auto space-y-1 text-sm font-mono"
             style={{ color: 'var(--color-text)' }}
           >
             {errors.map((err, i) => (
@@ -303,13 +538,17 @@ export default function CsvImport({ onImport, columns, currentUser = '' }: CsvIm
                 className="px-3 py-1.5 rounded"
                 style={{ backgroundColor: 'var(--color-card-bg)' }}
               >
-                строка {err.row}: колонка "{err.column}" {err.message}.
+                строка {err.row}: колонка "{err.column}" — {err.message}.
               </div>
             ))}
           </div>
           <div className="flex justify-end">
             <button
-              onClick={() => setShowErrorModal(false)}
+              onClick={() => {
+                setShowErrorModal(false)
+                setLoading(false)
+                setProgress(0)
+              }}
               className="px-4 py-2 rounded-lg text-sm transition-colors hover:opacity-80"
               style={{
                 color: 'var(--color-text)',

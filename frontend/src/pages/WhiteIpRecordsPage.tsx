@@ -175,7 +175,7 @@ export default function WhiteIpRecordsPage() {
           Белые IP
         </h2>
         <div className="flex items-center gap-2">
-          {canImport && <CsvImport onImport={handleCsvImport} columns={WHITE_IP_RECORD_COLUMNS} currentUser={user?.full_name || user?.username || ''} />}
+          {canImport && <CsvImport onImport={handleCsvImport} columns={WHITE_IP_RECORD_COLUMNS} currentUser={user?.full_name || user?.username || ''} variant="white-ip" />}
           {canExport && <CsvExport data={data as unknown as Record<string, unknown>[]} columns={WHITE_IP_RECORD_COLUMNS} filename="white-ip-records.csv" />}
           {canCreate && (
             <button

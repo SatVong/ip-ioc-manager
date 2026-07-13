@@ -109,6 +109,9 @@ export async function createIocRecord(req: Request, res: Response): Promise<void
       }
     }
 
+    // Преобразуем undefined/null mses в null (int[] не принимает пустую строку)
+    const mses = data.mses ?? null;
+
     const result = await pool.query(
       `INSERT INTO ioc_records
        (mses, date, from_source, letter, indicator, encoding,
@@ -116,7 +119,7 @@ export async function createIocRecord(req: Request, res: Response): Promise<void
         who_in, note_out, date_out, who_out)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
-      [data.mses, data.date, data.from_source, data.letter, data.indicator, encoding,
+      [mses, data.date, data.from_source, data.letter, data.indicator, encoding,
        data.status_opentip, data.status_virustotal, data.note_in, data.date_in,
        data.who_in, data.note_out, data.date_out, data.who_out]
     );

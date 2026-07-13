@@ -175,7 +175,7 @@ export default function IocRecordsPage() {
           IOC Хеши
         </h2>
         <div className="flex items-center gap-2">
-          {canImport && <CsvImport onImport={handleCsvImport} columns={IOC_RECORD_COLUMNS} currentUser={user?.full_name || user?.username || ''} />}
+          {canImport && <CsvImport onImport={handleCsvImport} columns={IOC_RECORD_COLUMNS} currentUser={user?.full_name || user?.username || ''} variant="ioc" />}
           {canExport && <CsvExport data={data as unknown as Record<string, unknown>[]} columns={IOC_RECORD_COLUMNS} filename="ioc-records.csv" />}
           {canCreate && (
             <button

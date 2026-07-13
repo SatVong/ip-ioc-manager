@@ -112,13 +112,16 @@ export async function createRecord(req: Request, res: Response): Promise<void> {
   try {
     const data = req.body as CreateIpRecordRequest;
 
+    // Преобразуем undefined/null mses в null (int[] не принимает пустую строку)
+    const mses = data.mses ?? null;
+
     const result = await pool.query(
-      `INSERT INTO ip_records 
-       (mses, date, from_source, letter, domain, ip, country, owner, 
-        mse_method, note_in, soib_infr, date_in, who_in, note_out, date_out, who_out) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) 
+      `INSERT INTO ip_records
+       (mses, date, from_source, letter, domain, ip, country, owner,
+        mse_method, note_in, soib_infr, date_in, who_in, note_out, date_out, who_out)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING *`,
-      [data.mses, data.date, data.from_source, data.letter, data.domain, data.ip,
+      [mses, data.date, data.from_source, data.letter, data.domain, data.ip,
        data.country, data.owner, data.mse_method, data.note_in, data.soib_infr || '-',
        data.date_in, data.who_in, data.note_out, data.date_out, data.who_out]
     );

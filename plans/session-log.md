@@ -480,7 +480,40 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
   - **Улучшена валидация длины**: теперь показывает сколько символов введено: "максимум 64 символа (введено 65)".
   - Убран проп `variant` из `CsvImportProps` (не используется).
   - Обновлены все 3 страницы: передают `currentUser` в `CsvImport`.
+  - **FIX 70 (Round 8 — повторное тестирование)**: Полная переработка CsvImport:
+    - **Разделитель `;`**: переписан парсер на `parseCSVLine()` из оригинального Vanilla JS (разделитель `;`, поддержка кавычек `"`). Ранее использовался `line.split(',')` (запятая), из-за чего вся строка парсилась как одно поле.
+    - **Нечёткое сопоставление заголовков (`fuzzyMatchHeader`)**: если точное совпадение `col.label === header` не найдено, пробуются: (1) case-insensitive сравнение, (2) известные опечатки (`"IP-адресс"` → `"IP-адрес"`, два 'с' → один 'с'), (3) поиск по ключевым словам (`"адрес"` → `ip`, `"страна"` → `country`).
+    - **BOM-обработка**: если первый символ файла — BOM (`0xFEFF`), он удаляется перед парсингом.
+    - **Поиск заголовка**: больше не предполагается, что заголовок — строка `lines[0]`. Код ищет первую непустую строку в файле.
+    - **Фильтрация пустых записей**: добавлена `isRecordEmpty()` — запись считается пустой, если ВСЕ её поля пусты. Такие записи отбрасываются перед валидацией.
+    - **Расширенное логирование**: `console.log()` выводит: первые 200 символов файла, индекс строки заголовка, распарсенные заголовки, `headerToKeyMap`, количество записей до/после фильтрации, пример первой записи в JSON.
+
+### FIX 71 (Round 8 — FIX 70 тестирование) — CSV импорт: ошибка 500 "malformed array literal"
+- **Проблема**: после исправления парсинга CSV (FIX 70) импорт стал возвращать `POST /api/records 500 (Internal Server Error)`. В логах бэкенда: `malformed array literal: ""`.
+- **Причина**: поле `mses` в CSV было пустым (`""`), а в БД `mses` имеет тип `int[]` (массив целых чисел). PostgreSQL не может преобразовать пустую строку в массив.
+- **Исправление на бэкенде** (3 контроллера):
+  - [`backend/src/controllers/records.controller.ts`](backend/src/controllers/records.controller.ts:115) — `const mses = data.mses ?? null`
+  - [`backend/src/controllers/iocRecords.controller.ts`](backend/src/controllers/iocRecords.controller.ts:113) — `const mses = data.mses ?? null`
+  - [`backend/src/controllers/whiteIpRecords.controller.ts`](backend/src/controllers/whiteIpRecords.controller.ts:77) — `const mses = data.mses ?? null`
+- **Исправление на фронтенде** ([`frontend/src/components/csv/CsvImport.tsx`](frontend/src/components/csv/CsvImport.tsx:378)):
+  - Добавлена очистка пустого `mses` перед отправкой: `if (record.mses === '') { delete record.mses }`
+
+### FIX 72-75 (Round 9) — Доработки CSV импорта/экспорта после тестирования
+- **FIX 72**: CsvExport — квадратики `mses` разделялись `;` (точка с запятой), что ломало импорт. Изменено на `,` (запятая): [`frontend/src/components/csv/CsvExport.tsx`](frontend/src/components/csv/CsvExport.tsx:41) — `value.join(',')`.
+- **FIX 73**: CsvImport — добавлена проверка обязательных полей ("золотой минимум"):
+  - IP / White-IP: `date`, `from_source`, `ip`, `note_in`
+  - IOC: `date`, `from_source`, `indicator`, `note_in`
+  - Если хотя бы одно из обязательных полей пустое — импорт блокируется, показывается лог ошибок.
+- **FIX 74**: CsvImport — добавлено:
+  - **Автоопределение кодировки IOC**: если поле `encoding` пустое, а `indicator` заполнен, кодировка определяется по длине хеша (32→md5, 40→sha1, 64→sha256, 128→sha512).
+  - **Валидация длины хеша**: проверка, что длина `indicator` равна 32, 40, 64 или 128. Если нет — ошибка с подсказкой: "По длине N определена кодировка X, но ожидается Y символов".
+  - **Прогресс-бар**: индикатор загрузки под кнопкой импорта (0% → 30% → 70% → 90% → 100%). Кнопка блокируется на время импорта.
+  - **Возвращён prop `variant`** в `CsvImportProps` (ip/ioc/white-ip) для определения списка обязательных полей.
+- **FIX 75**: Обновлены все 3 страницы — добавлен `variant` в `<CsvImport>`:
+  - [`IpRecordsPage.tsx`](frontend/src/pages/IpRecordsPage.tsx:179) — `variant="ip"`
+  - [`IocRecordsPage.tsx`](frontend/src/pages/IocRecordsPage.tsx:178) — `variant="ioc"`
+  - [`WhiteIpRecordsPage.tsx`](frontend/src/pages/WhiteIpRecordsPage.tsx:178) — `variant="white-ip"`
 
 ---
 
-*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-11T21:55 UTC+3 — Round 8: FIX 66-70)*
+*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-13T17:01 UTC+3 — Round 9: FIX 72-75)*
