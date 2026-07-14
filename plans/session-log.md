@@ -302,18 +302,18 @@ Page (usePagination + useRecords<T> + usePermissions)
 ## 4. ОТКРЫТЫЕ ПРОБЛЕМЫ
 
 ### Известные баги / ошибки
-- ❌ **Нет**: TypeScript компилируется без ошибок (`npx tsc -b --noEmit` — exit 0)
-- ❌ **Нет**: все 14 backend-тестов проходят (`npx jest` — exit 0)
-- ❌ **Нет**: Vite build успешен (`npx vite build` — exit 0, 118 modules)
+- ✅ **TypeScript компилируется без ошибок** — проверено: `npx tsc -b --noEmit` (frontend) — exit 0
+- ✅ **14 backend-тестов проходят** — проверено: `npx jest` (backend) — 14/14 passed, exit 0
+- ✅ **Vite build успешен** — проверено: `npx vite build` (frontend) — 704 modules, exit 0
 - ⚠️ **Предупреждение npm**: `glob@11.1.0 deprecated`, `inflight@1.0.6 deprecated` — не влияют на работу
 - ⚠️ **bcrypt install scripts**: не настроены `allowScripts` — может влиять на Docker-сборку
 
 ### Нерешённые архитектурные вопросы
-- ❓ **Старый server.js всё ещё работает**: новый TypeScript-код дублирует функциональность. Нужно решить, когда переключать трафик на новый код и удалять старый
-- ❓ **Путь к frontend в index.ts**: `path.join(__dirname, '../../frontend')` — при запуске из `dist/` может не совпадать. Нужно протестировать в Docker
-- ❓ **Типы для jsonwebtoken**: пришлось использовать числовой `expiresIn` (7 дней в секундах) вместо строки `'7d'` из-за несовместимости типов TypeScript 6
-- ❓ **Тесты с реальной БД**: текущие integration-тесты не подключаются к реальной PostgreSQL. Для полноценного тестирования API нужен testcontainers или mock
-- ❓ **Docker build не протестирован**: на машине разработки не установлен Docker. Нужно запустить `docker compose build` локально
+- ✅ **Старый server.js** — не используется. Docker запускает `backend/src/index.ts` (TypeScript). Nginx раздаёт статику. `server.js` можно удалить.
+- ✅ **Путь к frontend в index.ts** — неактуально. В Docker статику раздаёт Nginx, а не Express. Backend больше не обслуживает frontend.
+- ⚠️ **Типы для jsonwebtoken**: числовой `expiresIn` (7 дней в секундах) работает корректно. Это особенность TypeScript 6, не баг.
+- ❓ **Тесты с реальной БД**: текущие integration-тесты используют изолированный `app` без подключения к реальной PostgreSQL. Для полноценного тестирования API нужен testcontainers или mock. **Не срочно**.
+- ✅ **Docker build протестирован** — многократно собирался и запускался через `docker compose build frontend && docker compose up -d` в Round 9-10.
 
 ---
 
