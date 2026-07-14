@@ -552,6 +552,13 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
   - [`frontend/src/components/dashboard/AppearanceChart.tsx`](frontend/src/components/dashboard/AppearanceChart.tsx) — компонент на Recharts (BarChart) с пустым состоянием "Нет данных за выбранный период".
   - [`frontend/src/pages/DashboardPage.tsx`](frontend/src/pages/DashboardPage.tsx) — 3 виджета с выпадающим списком (Неделя/Месяц/Квартал/Год) и графиками для IP, IOC, White IP.
 
+### FIX 82 (Round 11) — Docker build: tsc: not found
+- **Проблема**: при `docker compose up -d` на свежем `git clone` сборка backend падает с `tsc: not found` (exit code 127).
+- **Причина**: `typescript` находится в `devDependencies`. `npm install` (без флагов) в `node:20-alpine` может не установить dev-зависимости из-за кэширования слоёв Docker или особенностей `npm install` в Alpine.
+- **Исправление** ([`backend/Dockerfile`](backend/Dockerfile)):
+  - `RUN npm install` → `RUN npm install --include=dev` — явное указание устанавливать dev-зависимости
+  - `RUN npm run build` → `RUN npx tsc` — использование `npx` для поиска `tsc` в `node_modules/.bin/`
+
 ---
 
-*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-13T19:49 UTC+3 — Round 10: FIX 80-81)*
+*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-14T17:56 UTC+3 — Round 11: FIX 82)*

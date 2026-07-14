@@ -5,14 +5,14 @@ WORKDIR /app
 
 # Копируем package.json и устанавливаем ВСЕ зависимости (включая dev)
 COPY package*.json ./
-RUN npm install
+RUN npm install --include=dev
 
 # Копируем исходный код
 COPY tsconfig.json ./
 COPY src/ ./src/
 
-# Компилируем TypeScript
-RUN npm run build
+# Компилируем TypeScript (npx tsc — на случай если tsc не в PATH)
+RUN npx tsc
 
 # Stage 2: Production
 FROM node:20-alpine AS production
