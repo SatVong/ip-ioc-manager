@@ -123,9 +123,8 @@ export default function TableRow<T extends { id: number }>({
 
   return (
     <tr
-      className="transition-colors hover:opacity-90"
+      className={`transition-colors hover:opacity-90${isExcluded ? ' hatching-excluded' : ''}`}
       style={{
-        backgroundColor: isExcluded ? '#fef2f2' : undefined,
         borderBottom: '1px solid var(--color-border)',
       }}
       onDoubleClick={() => {

@@ -135,6 +135,11 @@ export interface TimelineItem {
   count: number
 }
 
+export interface AppearanceData {
+  label: string
+  count: number
+}
+
 // ===== Notification types =====
 export interface Notification {
   id: string

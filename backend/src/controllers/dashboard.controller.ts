@@ -3,6 +3,7 @@ import {
   getDashboardStats,
   getTopCountries,
   getTimeline,
+  getAppearance,
 } from '../services/dashboard.service';
 
 // GET /api/dashboard/stats
@@ -36,5 +37,18 @@ export async function timeline(req: Request, res: Response): Promise<void> {
   } catch (err) {
     console.error('Ошибка при получении таймлайна:', (err as Error).message);
     res.status(500).json({ error: 'Ошибка при получении таймлайна' });
+  }
+}
+
+// GET /api/dashboard/appearance?period=month&type=ip
+export async function appearance(req: Request, res: Response): Promise<void> {
+  try {
+    const period = (req.query.period as string) || 'month';
+    const type = (req.query.type as string) || 'ip';
+    const data = await getAppearance(period, type);
+    res.json(data);
+  } catch (err) {
+    console.error('Ошибка при получении графика появления:', (err as Error).message);
+    res.status(500).json({ error: 'Ошибка при получении графика появления' });
   }
 }

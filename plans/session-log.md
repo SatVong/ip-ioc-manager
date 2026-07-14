@@ -524,6 +524,34 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
 - **Исправление**: удалены `progress`/`setProgress` из `useState`. Все вызовы `setProgress(...)` заменены на `setImportProgress(...)`.
 - **Текущий статус**: код готов к тестированию. Пользователю нужно выполнить `docker compose build frontend && docker compose up -d` и проверить импорт CSV с `"1,2,4"` в колонке "Где внесено".
 
+### FIX 80 (Round 10) — Штриховка исключённых записей вместо цветовой подсветки
+- **Проблема**: исключённые строки подсвечивались светло-красным фоном (`#fef2f2`). В тёмной теме этот цвет сливался с текстом, делая строку нечитаемой.
+- **Решение**: заменена сплошная заливка на диагональную штриховку (hatching) с использованием CSS-переменной `--color-danger`:
+  - [`frontend/src/index.css`](frontend/src/index.css:58) — добавлен CSS-класс `.hatching-excluded` с `repeating-linear-gradient(45deg, transparent, transparent 4px, color-mix(...) 4px, color-mix(...) 8px)`. Использует `color-mix(in srgb, var(--color-danger) 15%, transparent)` — 15% прозрачности красного, что даёт ненавязчивую штриховку, видимую в обеих темах.
+  - [`frontend/src/components/table/TableRow.tsx`](frontend/src/components/table/TableRow.tsx:126) — заменён `style.backgroundColor` на CSS-класс: `className={... isExcluded ? ' hatching-excluded' : ''}`.
+- **Результат**: исключённые строки теперь имеют диагональную штриховку красным цветом, которая не перекрывает текст и одинаково хорошо видна в светлой и тёмной темах.
+
+### FIX 81 (Round 10) — Ширина колонок, дашборд, графики появления
+- **Проблема 1**: названия колонок "Раздел письма", "Страна (2 буквы)*", "Примечание к исключению", "Кто вносил" накладывались на соседние столбцы из-за недостаточной ширины.
+- **Исправление 1**: изменена ширина колонок в [`constants.ts`](frontend/src/utils/constants.ts):
+  - `letter` (Раздел письма): 100px → **150px** (IP, IOC, White IP)
+  - `country` (Страна): 80px → **150px** (IP)
+  - `who_in`/`who_out` (Кто вносил/исключил): 150px → **180px** (IP, IOC, White IP)
+  - `note_out` (Примечание к исключению): 200px → **230px** (IP, IOC, White IP)
+
+- **Проблема 2**: на дашборде отображались карточки "Пользователи" и "Активные", которые не нужны.
+- **Исправление 2**: [`DashboardPage.tsx`](frontend/src/pages/DashboardPage.tsx) — удалены карточки `totalUsers` и `activeUsers`. Сетка изменена с `lg:grid-cols-5` на `md:grid-cols-3`.
+
+- **Проблема 3**: отсутствовали графики появления IP/IOC/White IP с фильтрацией по периоду.
+- **Исправление 3**: созданы:
+  - [`backend/src/services/dashboard.service.ts`](backend/src/services/dashboard.service.ts:72) — функция `getAppearance(period, type)` с SQL-запросами по 3 таблицам (`ip_records`, `ioc_records`, `white_ip_records`) и 4 периодам (`week`, `month`, `quarter`, `year`). Группировка через `DATE_TRUNC`.
+  - [`backend/src/controllers/dashboard.controller.ts`](backend/src/controllers/dashboard.controller.ts:42) — контроллер `appearance(req, res)`.
+  - [`backend/src/routes/dashboard.routes.ts`](backend/src/routes/dashboard.routes.ts:17) — роут `GET /api/dashboard/appearance?period=month&type=ip`.
+  - [`frontend/src/types/index.ts`](frontend/src/types/index.ts:138) — тип `AppearanceData { label, count }`.
+  - [`frontend/src/api/dashboard.ts`](frontend/src/api/dashboard.ts:18) — функция `getAppearance(period, type)`.
+  - [`frontend/src/components/dashboard/AppearanceChart.tsx`](frontend/src/components/dashboard/AppearanceChart.tsx) — компонент на Recharts (BarChart) с пустым состоянием "Нет данных за выбранный период".
+  - [`frontend/src/pages/DashboardPage.tsx`](frontend/src/pages/DashboardPage.tsx) — 3 виджета с выпадающим списком (Неделя/Месяц/Квартал/Год) и графиками для IP, IOC, White IP.
+
 ---
 
-*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-13T17:54 UTC+3 — Round 9: FIX 72-78)*
+*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-13T19:49 UTC+3 — Round 10: FIX 80-81)*
