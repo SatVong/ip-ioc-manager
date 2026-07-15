@@ -39,6 +39,6 @@ export async function toggleUser(id: number, data: { is_active: boolean }): Prom
   return response.data
 }
 
-export async function changePassword(id: number, data: { password: string }): Promise<void> {
+export async function changePassword(id: number, data: { password: string } | { currentPassword: string; newPassword: string }): Promise<void> {
   await api.put(`/users/${id}/password`, data)
 }

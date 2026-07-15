@@ -108,5 +108,5 @@ CREATE INDEX IF NOT EXISTS idx_white_ip_records_date ON white_ip_records(date);
 
 -- Администратор по умолчанию (пароль: admin123)
 INSERT INTO users (username, password_hash, full_name, email, role, can_manage_users, can_delete, can_import)
-VALUES ('admin', '$2b$10$pdPIQ4VGZHsilAWvtYoG3uA6hdCOJLggitQVL4Ih8H1Iy9X3FKrmG', 'Главный администратор', 'admin@local', 'admin', true, true, true')
+VALUES ('admin', '$2b$10$pdPIQ4VGZHsilAWvtYoG3uA6hdCOJLggitQVL4Ih8H1Iy9X3FKrmG', 'Главный администратор', 'admin@local', 'admin', true, true, true)
 ON CONFLICT (username) DO NOTHING;

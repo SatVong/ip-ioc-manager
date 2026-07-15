@@ -559,6 +559,62 @@ docker compose up -d     # полный запуск (БД + backend + frontend)
   - `RUN npm install` → `RUN npm install --include=dev` — явное указание устанавливать dev-зависимости
   - `RUN npm run build` → `RUN npx tsc` — использование `npx` для поиска `tsc` в `node_modules/.bin/`
 
+### FIX 83 (Round 12) — Swagger UI 404 + 404 страница-заглушка
+- **Проблема**: при открытии `http://localhost/api-docs` загружается белый экран, в консоли браузера 404 ошибки на `swagger-ui.css`, `swagger-ui-bundle.js` и другие ассеты Swagger.
+- **Причина**: Nginx имеет `location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$` (regex-локация для кеширования статики). Regex-локации в Nginx имеют **приоритет над prefix-локациями** (`/api-docs/`). Поэтому запрос `/api-docs/swagger-ui.css` попадал в regex-локацию, которая пыталась найти файл в `/usr/share/nginx/html` — где его нет → 404.
+- **Исправление 1 — Nginx** ([`frontend/nginx.conf`](frontend/nginx.conf)):
+  - Добавлен `location = /api-docs { return 302 /api-docs/; }` — редирект с `/api-docs` на `/api-docs/` (чтобы относительные пути работали)
+  - Изменён `location /api-docs` на `location ^~ /api-docs/` — модификатор `^~` даёт prefix-локации приоритет над regex-локациями
+  - Изменён `location /api/` на `location ^~ /api/` — для единообразия
+  - Добавлен `error_page 404 /404.html` — кастомная страница для несуществующих статических файлов
+- **Исправление 2 — 404 страница** ([`frontend/src/404.html`](frontend/src/404.html)):
+  - Создана кастомная страница 404 в стиле тёмной темы проекта
+  - Содержит **плейсхолдер для картинки** (SVG-иконка) с комментарием, как заменить на своё изображение
+  - Показывает текущий путь, по которому произошла 404 ошибка
+  - Кнопка "На главную" для возврата на SPA
+- **Исправление 3 — Dockerfile** ([`frontend/Dockerfile`](frontend/Dockerfile)):
+  - Добавлена строка `COPY src/404.html /usr/share/nginx/html/404.html` — копирование 404 страницы в Nginx-контейнер
+- **Исправление 4 — Swagger server URL** ([`backend/src/swagger.ts`](backend/src/swagger.ts:14)):
+  - **Проблема**: Swagger UI отправлял запросы напрямую на `http://localhost:3000`, который недоступен из браузера пользователя (бэкенд доступен только через Nginx).
+  - **Попытка 1**: URL `/api` — но все пути в спецификации уже начинаются с `/api` (например, `/api/auth/login`). Получился двойной префикс: `/api/api/auth/login` → 404.
+  - **Исправление**: URL `/` (корень). Пути в спецификации уже содержат `/api/...`, поэтому запрос идёт на `http://192.168.52.137/api/auth/login` → Nginx проксирует на бэкенд → работает.
+  - `localhost:3000` оставлен вторым сервером для локальной разработки без Docker.
+
+### FIX 84-86 (Round 13) — createUser is_active, changePassword 403, ProfilePage смена пароля
+- **FIX 84**: createUser не передавал `is_active` в INSERT ([`backend/src/controllers/users.controller.ts`](backend/src/controllers/users.controller.ts:93)):
+  - **Проблема**: при создании пользователя с отметкой "Активен" пользователь создавался как неактивный.
+  - **Причина**: `is_active` не был включён в деструктуризацию `req.body` и в SQL-запрос INSERT.
+  - **Исправление**: добавлен `is_active` в деструктуризацию (строка 96) и в INSERT (строка 130, 136).
+- **FIX 85**: changePassword возвращал 403 для администратора ([`backend/src/controllers/users.controller.ts`](backend/src/controllers/users.controller.ts:302)):
+  - **Проблема**: фронтенд отправлял `{ password: newPassword }`, а бэкенд ожидал `{ currentPassword, newPassword }`. Кроме того, бэкенд блокировал смену пароля другого пользователя (`parseInt(id) !== req.user!.userId`).
+  - **Исправление**: переписан `changePassword` с двумя режимами:
+    - **Режим администратора**: если передан `{ password }` и текущий пользователь — admin, пароль меняется без проверки текущего пароля.
+    - **Режим пользователя**: если передан `{ currentPassword, newPassword }`, проверяется текущий пароль и меняется на новый.
+  - Добавлена вспомогательная функция `checkIsAdmin()`.
+  - Обновлён тип `changePassword` в [`frontend/src/api/users.ts`](frontend/src/api/users.ts:42) — теперь принимает `{ password: string } | { currentPassword: string; newPassword: string }`.
+- **FIX 86**: ProfilePage — добавлена смена пароля для всех пользователей ([`frontend/src/pages/ProfilePage.tsx`](frontend/src/pages/ProfilePage.tsx)):
+  - **Проблема**: в разделе "Профиль" не было кнопки смены пароля для обычных пользователей.
+  - **Исправление**: добавлен блок "Безопасность" с кнопкой "Сменить пароль" и модальным окном с тремя полями (текущий пароль, новый пароль, подтверждение). Доступен всем пользователям, не только администраторам.
+
+### FIX 87 (Round 13) — Валидация пароля: 6 → 16 символов
+- **Проблема**: бэкенд проверял `password.length < 6`, а фронтенд — `< 16`. При смене пароля через ProfilePage тоже было `< 6`.
+- **Исправления**:
+  - [`backend/src/controllers/users.controller.ts`](backend/src/controllers/users.controller.ts:103) — `createUser`: `password.length < 6` → `< 16`
+  - [`backend/src/controllers/users.controller.ts`](backend/src/controllers/users.controller.ts:326) — `changePassword` (режим админа): `password.length < 6` → `< 16`
+  - [`frontend/src/pages/ProfilePage.tsx`](frontend/src/pages/ProfilePage.tsx:82) — `handleChangePassword`: `newPassword.length < 6` → `< 16`
+  - [`frontend/src/pages/UsersPage.tsx`](frontend/src/pages/UsersPage.tsx:162) — `handleChangePassword`: добавлена проверка `newPassword.length < 16`
+
+### FIX 88 (Round 14) — createUser → updateUser сбрасывает is_active в false
+- **Проблема**: при создании пользователя с отметкой "Активен" пользователь создавался как неактивный.
+- **Причина**: после создания пользователя фронтенд вызывал `updateUser` для установки прав (`can_create`, `can_edit` и т.д.), но **не передавал `is_active`**. Бэкенд в `updateUser` деструктурирует `is_active` из `req.body`, и если он `undefined`, то `toBool(undefined)` возвращает `false`, что перезаписывает `is_active` с `true` на `false`.
+- **Исправление** ([`frontend/src/pages/UsersPage.tsx`](frontend/src/pages/UsersPage.tsx:104)):
+  - Добавлен `is_active: formData.is_active` в вызов `updateUser` после создания пользователя.
+
+### FIX 89 (Round 14) — Swagger: отсутствует endpoint очистки белых IP
+- **Проблема**: в Swagger-спецификации в разделе "Администрирование" не было endpoint'а `clear-white-ip-records`.
+- **Исправление** ([`backend/src/swagger.ts`](backend/src/swagger.ts:337)):
+  - Добавлен endpoint `/api/admin/clear-white-ip-records` с тегом `Администрирование` между `clear-ioc-records` и `clear-users`.
+
 ---
 
-*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-14T17:56 UTC+3 — Round 11: FIX 82)*
+*Сгенерирован: 2026-07-09T14:49 UTC+3 (обновлён: 2026-07-15T16:33 UTC+3 — Round 14: FIX 88-89)*

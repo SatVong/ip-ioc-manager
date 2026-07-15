@@ -36,6 +36,8 @@ app.use(express.json());
 app.use('/api', apiLimiter);
 
 // Swagger документация (без авторизации)
+// Используем swaggerUi.serve для раздачи статики swagger-ui-dist
+// и swaggerUi.setup для генерации HTML-страницы
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'IP/IOC Manager API Docs',

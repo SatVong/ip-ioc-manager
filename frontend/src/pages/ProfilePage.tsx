@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useNotification } from '../hooks/useNotification'
 import Modal from '../components/modal/Modal'
 import * as adminApi from '../api/admin'
+import * as usersApi from '../api/users'
 
 export default function ProfilePage() {
   const { user } = useAuth()
@@ -11,6 +12,11 @@ export default function ProfilePage() {
   const [clearAction, setClearAction] = useState<string>('')
   const [confirmText, setConfirmText] = useState('')
   const [clearing, setClearing] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
 
   if (!user) return null
 
@@ -74,6 +80,30 @@ export default function ProfilePage() {
     }
   }
 
+  const handleChangePassword = async () => {
+    if (!newPassword || newPassword.length < 16) {
+      addNotification('warning', 'Новый пароль должен быть не менее 16 символов')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      addNotification('warning', 'Пароли не совпадают')
+      return
+    }
+    try {
+      setChangingPassword(true)
+      await usersApi.changePassword(user!.id, { currentPassword, newPassword })
+      addNotification('success', 'Пароль успешно изменён')
+      setShowPasswordModal(false)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch {
+      addNotification('error', 'Ошибка при смене пароля. Проверьте текущий пароль.')
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
   const permissions = [
     { key: 'can_create', label: 'Создание записей', value: user.can_create },
     { key: 'can_edit', label: 'Редактирование записей', value: user.can_edit },
@@ -127,6 +157,28 @@ export default function ProfilePage() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Смена пароля (для всех пользователей) */}
+      <div
+        className="rounded-xl border overflow-hidden"
+        style={{
+          backgroundColor: 'var(--color-card-bg)',
+          borderColor: 'var(--color-border)',
+        }}
+      >
+        <div className="p-6">
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
+            Безопасность
+          </h3>
+          <button
+            onClick={() => setShowPasswordModal(true)}
+            className="px-4 py-2 rounded-lg text-sm text-white font-medium transition-colors hover:opacity-90"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            Сменить пароль
+          </button>
         </div>
       </div>
 
@@ -282,6 +334,86 @@ export default function ProfilePage() {
               style={{ backgroundColor: '#ef4444' }}
             >
               {clearing ? 'Очистка...' : 'Подтвердить очистку'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Модальное окно смены пароля */}
+      <Modal
+        isOpen={showPasswordModal}
+        onClose={() => { setShowPasswordModal(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword('') }}
+        title="Смена пароля"
+        width="450px"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+              Текущий пароль
+            </label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm border"
+              style={{
+                backgroundColor: 'var(--color-bg)',
+                color: 'var(--color-text)',
+                borderColor: 'var(--color-border)',
+              }}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+              Новый пароль
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm border"
+              style={{
+                backgroundColor: 'var(--color-bg)',
+                color: 'var(--color-text)',
+                borderColor: 'var(--color-border)',
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+              Подтверждение нового пароля
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm border"
+              style={{
+                backgroundColor: 'var(--color-bg)',
+                color: 'var(--color-text)',
+                borderColor: 'var(--color-border)',
+              }}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={() => { setShowPasswordModal(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword('') }}
+              className="px-4 py-2 rounded-lg text-sm"
+              style={{
+                color: 'var(--color-text)',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleChangePassword}
+              disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+              className="px-4 py-2 rounded-lg text-sm text-white transition-colors hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              {changingPassword ? 'Смена...' : 'Сменить пароль'}
             </button>
           </div>
         </div>

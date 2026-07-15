@@ -13,8 +13,12 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [
       {
+        url: '/',
+        description: 'Production server (через Nginx)',
+      },
+      {
         url: 'http://localhost:3000',
-        description: 'Local development server',
+        description: 'Local development server (без Nginx)',
       },
     ],
     components: {
@@ -328,6 +332,13 @@ const options: swaggerJsdoc.Options = {
         delete: {
           tags: ['Администрирование'],
           summary: 'Очистить таблицу IOC хешей',
+          responses: { '200': { description: 'Таблица очищена' }, '403': { description: 'Только администратор' } },
+        },
+      },
+      '/api/admin/clear-white-ip-records': {
+        delete: {
+          tags: ['Администрирование'],
+          summary: 'Очистить таблицу белых IP',
           responses: { '200': { description: 'Таблица очищена' }, '403': { description: 'Только администратор' } },
         },
       },

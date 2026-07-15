@@ -21,6 +21,9 @@ FROM nginx:alpine
 # Копируем собранный bundle из builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# Копируем 404 страницу
+COPY src/404.html /usr/share/nginx/html/404.html
+
 # Копируем конфигурацию nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

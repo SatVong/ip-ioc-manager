@@ -93,6 +93,7 @@ export async function createUser(req: Request, res: Response): Promise<void> {
     const {
       username, password, full_name, position, department, email, role,
       can_create, can_edit, can_delete, can_import, can_export, can_manage_users,
+      is_active,
     } = req.body;
 
     if (!username || !password) {
@@ -100,8 +101,8 @@ export async function createUser(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    if (password.length < 6) {
-      res.status(400).json({ error: 'Пароль должен быть не менее 6 символов' });
+    if (password.length < 16) {
+      res.status(400).json({ error: 'Пароль должен быть не менее 16 символов' });
       return;
     }
 
@@ -125,14 +126,16 @@ export async function createUser(req: Request, res: Response): Promise<void> {
     const toBool = (val: any): boolean => val === true || val === 'true' || val === 1;
 
     const result = await pool.query(
-      `INSERT INTO users 
+      `INSERT INTO users
        (username, password_hash, full_name, position, department, email, role,
-        can_create, can_edit, can_delete, can_import, can_export, can_manage_users) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+        can_create, can_edit, can_delete, can_import, can_export, can_manage_users,
+        is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING id, username, full_name, position, department, email, role`,
       [username, hash, full_name, position || null, department || null, email || null, role || 'user',
        toBool(can_create), toBool(can_edit), toBool(can_delete),
-       toBool(can_import), toBool(can_export), toBool(can_manage_users)]
+       toBool(can_import), toBool(can_export), toBool(can_manage_users),
+       toBool(is_active)]
     );
 
     await pool.query(
@@ -303,12 +306,7 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
 export async function changePassword(req: Request, res: Response): Promise<void> {
   try {
     const id = req.params.id as string;
-    const { currentPassword, newPassword } = req.body;
-
-    if (parseInt(id) !== req.user!.userId) {
-      res.status(403).json({ error: 'Нельзя менять пароль другого пользователя' });
-      return;
-    }
+    const { password, currentPassword, newPassword } = req.body;
 
     const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
     if (userResult.rows.length === 0) {
@@ -317,8 +315,47 @@ export async function changePassword(req: Request, res: Response): Promise<void>
     }
 
     const user = userResult.rows[0] as User;
-    const validPassword = await bcrypt.compare(currentPassword, user.password_hash);
+    const isAdmin = await checkIsAdmin(req.user!.userId);
 
+    // Режим 1: администратор меняет пароль любому пользователю (только { password })
+    if (password) {
+      if (!isAdmin) {
+        res.status(403).json({ error: 'Только администратор может менять пароль другого пользователя' });
+        return;
+      }
+      if (password.length < 16) {
+        res.status(400).json({ error: 'Пароль должен быть не менее 16 символов' });
+        return;
+      }
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(password, salt);
+
+      await pool.query(
+        'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [hash, id]
+      );
+
+      await pool.query(
+        'INSERT INTO user_logs (user_id, action, details) VALUES ($1, $2, $3)',
+        [req.user!.userId, 'CHANGE_PASSWORD', JSON.stringify({ changed_by_admin: true, target_user_id: id })]
+      );
+
+      res.json({ message: 'Пароль успешно изменён' });
+      return;
+    }
+
+    // Режим 2: пользователь меняет свой пароль ({ currentPassword, newPassword })
+    if (parseInt(id) !== req.user!.userId) {
+      res.status(403).json({ error: 'Нельзя менять пароль другого пользователя' });
+      return;
+    }
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: 'Требуется текущий и новый пароль' });
+      return;
+    }
+
+    const validPassword = await bcrypt.compare(currentPassword, user.password_hash);
     if (!validPassword) {
       res.status(401).json({ error: 'Неверный текущий пароль' });
       return;
@@ -341,5 +378,15 @@ export async function changePassword(req: Request, res: Response): Promise<void>
   } catch (err) {
     console.error('Ошибка при смене пароля:', (err as Error).message);
     res.status(500).json({ error: 'Ошибка при смене пароля' });
+  }
+}
+
+// Вспомогательная функция для проверки прав администратора
+async function checkIsAdmin(userId: number): Promise<boolean> {
+  try {
+    const result = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
+    return result.rows.length > 0 && result.rows[0].role === 'admin';
+  } catch {
+    return false;
   }
 }

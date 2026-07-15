@@ -97,7 +97,7 @@ export default function UsersPage() {
         is_active: formData.is_active,
         role: formData.role,
       })
-      // Update permissions after creation
+      // Update permissions after creation (также передаём is_active, чтобы updateUser не сбросил его в false)
       const newUsers = await usersApi.getUsers()
       const created = newUsers.find(u => u.username === formData.username)
       if (created) {
@@ -108,6 +108,7 @@ export default function UsersPage() {
           can_import: formData.can_import,
           can_export: formData.can_export,
           can_manage_users: formData.can_manage_users,
+          is_active: formData.is_active,
         } as Partial<User>)
       }
       addNotification('success', 'Пользователь создан')
@@ -159,6 +160,10 @@ export default function UsersPage() {
   const handleChangePassword = useCallback(async () => {
     if (!passwordUserId || !newPassword) {
       addNotification('warning', 'Введите новый пароль')
+      return
+    }
+    if (newPassword.length < 16) {
+      addNotification('warning', 'Пароль должен быть не менее 16 символов')
       return
     }
     try {
